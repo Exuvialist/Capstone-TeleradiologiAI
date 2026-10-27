@@ -5,8 +5,7 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.db
-*.sqlite3
 .pytest_cache/
-backend/uploads/images/*
-!backend/uploads/images/.gitkeep
+
+# Allow database SQLite bawaan untuk kemudahan testing tim
+!backend/teleradiologi.db
