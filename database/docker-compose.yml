@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:16
+    container_name: teleradiologi-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: teleradiologi
+      POSTGRES_PASSWORD: teleradiologi_dev
+      POSTGRES_DB: teleradiologi
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      # File di folder ini otomatis dijalankan berurutan (01, 02, ...)
+      # HANYA saat database pertama kali dibuat (volume masih kosong).
+      - ./db/01_schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./db/02_seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+
+volumes:
+  pgdata:
