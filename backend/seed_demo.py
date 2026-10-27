@@ -36,6 +36,10 @@ def create_sample_image(folder_name: str, file_name: str, label_text: str) -> st
 
 def seed():
     print("--- [SEEDING DATABASE TELERADIOLOGI AI (4 TABEL)] ---")
+    # Seeder menghapus semua data. Schema dibuat oleh Alembic (`alembic upgrade head`),
+    # bukan di sini. Untuk keamanan, hanya boleh dijalankan di environment development.
+    if settings.ENVIRONMENT != "development":
+        raise RuntimeError("Seeder hanya boleh dijalankan saat ENVIRONMENT=development")
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()

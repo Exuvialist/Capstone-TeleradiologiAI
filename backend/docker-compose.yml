@@ -1,14 +1,12 @@
-version: '3.8'
-
 services:
   postgres:
-    image: postgres:15-alpine
+    image: postgres:16
     container_name: teleradiologi_postgres
-    restart: always
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgrespassword
-      POSTGRES_DB: teleradiologi_db
+      POSTGRES_USER: teleradiologi
+      POSTGRES_PASSWORD: teleradiologi_dev
+      POSTGRES_DB: teleradiologi
     ports:
       - "5432:5432"
     volumes:

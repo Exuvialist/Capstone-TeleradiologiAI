@@ -11,10 +11,10 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
     
     # Database
-    DATABASE_URL: str = "postgresql://postgres:postgrespassword@localhost:5432/teleradiologi_db"
+    DATABASE_URL: str = "postgresql+psycopg2://teleradiologi:teleradiologi_dev@localhost:5432/teleradiologi"
     
     # JWT Auth
-    SECRET_KEY: str = "capstone-teleradiologi-secret-key-ugm-2026-very-secure"
+    SECRET_KEY: str  # wajib diisi lewat .env (lihat .env.example)
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 hari
     

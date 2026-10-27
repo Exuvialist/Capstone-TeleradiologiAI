@@ -7,5 +7,7 @@ __pycache__/
 *.pyd
 .pytest_cache/
 
-# Allow database SQLite bawaan untuk kemudahan testing tim
-!backend/teleradiologi.db
+# Database lokal & berkas upload tidak masuk repo
+*.db
+backend/uploads/images/*
+!backend/uploads/images/.gitkeep
