@@ -1,3 +1,11 @@
 Model/bonecancer/archive.zip
-.venv/*
+.venv/
 .env*
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Allow database SQLite bawaan untuk kemudahan testing tim
+!backend/teleradiologi.db
