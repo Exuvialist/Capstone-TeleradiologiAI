@@ -1,3 +1,12 @@
 Model/bonecancer/archive.zip
-.venv/*
+.venv/
 .env*
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+.pytest_cache/
+backend/uploads/images/*
+!backend/uploads/images/.gitkeep
