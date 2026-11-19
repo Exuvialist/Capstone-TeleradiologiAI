@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
   ChevronDown,
   ChevronUp,
@@ -11,27 +11,50 @@ import {
   AlertCircle,
   Info,
   X,
-  Hospital,
+  User,
+  LogOut,
 } from 'lucide-react'
 import { usePneumonia } from '../context/PneumoniaContext'
-
-const crumbMap: Record<string, string[]> = {
-  statistika: ['Detail Pemeriksaan', 'Pneumonia - Statistika'],
-  buat: ['Detail Pemeriksaan', 'Pneumonia - Buat Pemeriksaan'],
-  'buat/terisi': ['Detail Pemeriksaan', 'Pneumonia - Buat Pemeriksaan'],
-  proses: ['Detail Pemeriksaan', 'Pneumonia - Dalam Proses'],
-  terverifikasi: ['Detail Pemeriksaan', 'Pneumonia - Terverifikasi'],
-  assignment: ['Detail Pemeriksaan', 'Pneumonia', 'Manual Assignment'],
-}
+import { getModuleInfo } from './PneumoniaTabs'
 
 function Crumbs() {
   const { pathname } = useLocation()
-  const key = pathname.replace('/faskes-3t/', '')
-  const items = crumbMap[key] ?? ['Detail Pemeriksaan', 'Pneumonia', '#PN-0123']
+
+  if (pathname.includes('/dashboard') || pathname.includes('/riwayat')) {
+    return (
+      <div className="crumbs">
+        <span className="cur">Dashboard</span>
+      </div>
+    )
+  }
+
+  const moduleInfo = getModuleInfo(pathname)
+  const moduleName = moduleInfo.title
+
+  let items: string[] = ['Detail Pemeriksaan', `${moduleName} - Statistika`]
+
+  if (pathname.includes('/buat')) {
+    items = ['Detail Pemeriksaan', `${moduleName} - Buat Pemeriksaan`]
+  } else if (pathname.includes('/proses')) {
+    items = ['Detail Pemeriksaan', `${moduleName} - Dalam Proses`]
+  } else if (pathname.includes('/terverifikasi')) {
+    items = ['Detail Pemeriksaan', `${moduleName} - Terverifikasi`]
+  } else if (pathname.includes('/assignment')) {
+    items = ['Detail Pemeriksaan', moduleName, 'Manual Assignment']
+  } else if (pathname.includes('/detail')) {
+    const defaultId =
+      moduleInfo.type === 'kanker-tulang'
+        ? '#KT-0124'
+        : moduleInfo.type === 'tumor-otak'
+        ? '#TO-0125'
+        : '#PN-0123'
+    items = ['Detail Pemeriksaan', moduleName, defaultId]
+  }
+
   return (
     <div className="crumbs">
       {items.map((c, i) => (
-        <span key={c} style={{ display: 'contents' }}>
+        <span key={c + i} style={{ display: 'contents' }}>
           {i > 0 && <span>/</span>}
           <span className={i === items.length - 1 ? 'cur' : ''}>{c}</span>
         </span>
@@ -42,6 +65,7 @@ function Crumbs() {
 
 export default function Shell() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { toasts, removeToast, addToast, sidebarCollapsed, setSidebarCollapsed } = usePneumonia()
 
   const [topSearch, setTopSearch] = useState('')
@@ -52,14 +76,16 @@ export default function Shell() {
     e.preventDefault()
     if (!topSearch.trim()) return
     const q = topSearch.toLowerCase()
+    const moduleInfo = getModuleInfo(location.pathname)
+    const base = moduleInfo.basePath
     if (q.includes('buat') || q.includes('tambah') || q.includes('baru')) {
-      navigate('/faskes-3t/buat')
+      navigate(`${base}/buat`)
     } else if (q.includes('proses') || q.includes('antrean')) {
-      navigate('/faskes-3t/proses')
+      navigate(`${base}/proses`)
     } else if (q.includes('verif') || q.includes('hasil') || q.includes('selesai')) {
-      navigate('/faskes-3t/terverifikasi')
+      navigate(`${base}/terverifikasi`)
     } else {
-      navigate('/faskes-3t/statistika')
+      navigate(`${base}/statistika`)
       addToast(`Mencari data dengan kata kunci "${topSearch}"`, 'info')
     }
     setTopSearch('')
@@ -85,14 +111,14 @@ export default function Shell() {
         </div>
 
         <nav className="sb-nav">
-          <Link
-            className="sb-item"
-            to="/faskes-3t/statistika"
+          <NavLink
+            className={({ isActive }) => `sb-item ${isActive ? 'active' : ''}`}
+            to="/faskes-3t/dashboard"
             title="Dashboard"
           >
             <Home size={18} />
             {!sidebarCollapsed && <span>Dashboard</span>}
-          </Link>
+          </NavLink>
 
           <div className="sb-group">
             {!sidebarCollapsed && (
@@ -127,48 +153,59 @@ export default function Shell() {
             {subGroupOpen && (
               <>
                 <NavLink
-                  className={({ isActive }) => `sb-item ${isActive ? 'active' : ''}`}
-                  to="/faskes-3t/statistika"
+                  className={({ isActive }) =>
+                    `sb-item ${
+                      isActive ||
+                      location.pathname.includes('/pneumonia') ||
+                      (!location.pathname.includes('kanker-tulang') &&
+                        !location.pathname.includes('tumor-otak') &&
+                        !location.pathname.includes('dashboard') &&
+                        !location.pathname.includes('riwayat'))
+                        ? 'active'
+                        : ''
+                    }`
+                  }
+                  to="/faskes-3t/pneumonia/statistika"
                   title="Pneumonia"
                 >
                   <span className="sq" style={{ background: 'var(--quaternary-600)' }} />
                   {!sidebarCollapsed && <span>Pneumonia</span>}
                 </NavLink>
 
-                <button
-                  type="button"
-                  className="sb-item"
-                  style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer' }}
-                  onClick={() => addToast('Modul Kanker Tulang sedang dalam tahap integrasi model Roboflow.', 'info')}
+                <NavLink
+                  className={({ isActive }) =>
+                    `sb-item ${isActive || location.pathname.includes('kanker-tulang') ? 'active' : ''}`
+                  }
+                  to="/faskes-3t/kanker-tulang/statistika"
                   title="Kanker Tulang"
                 >
                   <span className="sq" style={{ background: 'var(--primary-600)' }} />
                   {!sidebarCollapsed && <span>Kanker Tulang</span>}
-                </button>
+                </NavLink>
 
-                <button
-                  type="button"
-                  className="sb-item"
-                  style={{ background: 'none', border: 'none', width: '100%', textAlign: 'left', cursor: 'pointer' }}
-                  onClick={() => addToast('Modul Tumor Otak sedang dalam persiapan dataset radiologi.', 'info')}
+                <NavLink
+                  className={({ isActive }) =>
+                    `sb-item ${isActive || location.pathname.includes('tumor-otak') ? 'active' : ''}`
+                  }
+                  to="/faskes-3t/tumor-otak/statistika"
                   title="Tumor Otak"
                 >
                   <span className="sq" style={{ background: 'var(--tertiary-600)' }} />
                   {!sidebarCollapsed && <span>Tumor Otak</span>}
-                </button>
+                </NavLink>
               </>
             )}
           </div>
 
-          <Link
-            className="sb-item"
+          <NavLink
+            className={({ isActive }) => `sb-item ${isActive ? 'active' : ''}`}
             style={{ marginTop: 12 }}
-            to="/faskes-3t/terverifikasi"
+            to="/faskes-3t/riwayat"
             title="Riwayat Pemeriksaan"
           >
             <Package size={18} />
             {!sidebarCollapsed && <span>Riwayat</span>}
-          </Link>
+          </NavLink>
         </nav>
 
         {/* Sidebar Footer User Profile */}
@@ -197,30 +234,67 @@ export default function Shell() {
                 background: '#fff',
                 border: '1px solid var(--neutral-300)',
                 borderRadius: 8,
-                padding: 12,
+                padding: '6px 8px',
                 boxShadow: '0 -4px 16px rgba(0,0,0,0.1)',
                 zIndex: 30,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <Hospital size={16} color="var(--quaternary-600)" />
-                <b style={{ fontSize: 13 }}>Puskesmas 3T Wilayah Timur</b>
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--neutral-400)', marginBottom: 8 }}>
-                ID Faskes: #FSK-9901 <br />
-                Status Koneksi: Terhubung ke Server AI
-              </div>
               <button
                 type="button"
-                className="btn btn-outline"
-                style={{ width: '100%', fontSize: 12 }}
+                className="btn"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  fontSize: 13,
+                  justifyContent: 'flex-start',
+                  padding: '8px 10px',
+                  color: 'var(--neutral-1000)',
+                  borderRadius: 6,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  width: '100%',
+                }}
                 onClick={() => {
                   setShowProfileMenu(false)
-                  addToast('Sesi faskes terverifikasi.', 'info')
+                  addToast('Profil Akun Dokter Radiologi aktif.', 'info')
                 }}
               >
-                Pengaturan Akun
+                <User size={16} />
+                <span>Akun Dokter Radiologi</span>
+              </button>
+
+              <div style={{ borderTop: '1px solid var(--neutral-200)', margin: '2px 0' }} />
+
+              <button
+                type="button"
+                className="btn"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  fontSize: 13,
+                  justifyContent: 'flex-start',
+                  padding: '8px 10px',
+                  color: 'var(--red-100)',
+                  borderRadius: 6,
+                  border: 'none',
+                  background: 'none',
+                  cursor: 'pointer',
+                  width: '100%',
+                }}
+                onClick={() => {
+                  setShowProfileMenu(false)
+                  addToast('Anda telah keluar dari sesi akun.', 'warning')
+                }}
+              >
+                <LogOut size={16} color="var(--red-100)" />
+                <span style={{ color: 'var(--red-100)', fontWeight: 500 }}>Log Out</span>
               </button>
             </div>
           )}
@@ -255,7 +329,7 @@ export default function Shell() {
         <div
           style={{
             position: 'fixed',
-            bottom: 24,
+            top: 20,
             right: 24,
             zIndex: 9999,
             display: 'flex',
@@ -281,8 +355,8 @@ export default function Shell() {
                     : '#342f32',
                 color: '#fff',
                 fontSize: 13,
-                boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-                animation: 'slideUp 0.2s ease',
+                boxShadow: '0 6px 20px rgba(0,0,0,0.25)',
+                animation: 'slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
               }}
             >
               {t.type === 'success' ? (

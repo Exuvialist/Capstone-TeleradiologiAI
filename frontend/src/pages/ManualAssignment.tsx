@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { ChevronLeft, Filter, Search, UserCheck } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { usePneumonia, type Doctor } from '../context/PneumoniaContext'
+import { getModuleInfo } from '../components/PneumoniaTabs'
 
 function DoctorCard({
   doc,
@@ -42,15 +43,25 @@ function DoctorCard({
 
 export default function ManualAssignment() {
   const nav = useNavigate()
+  const location = useLocation()
+  const currentModule = getModuleInfo(location.pathname)
+  const isBone = currentModule.type === 'kanker-tulang'
+  const isBrain = currentModule.type === 'tumor-otak'
+
   const { currentCase, doctors, assignDoctorToCase, addToast } = usePneumonia()
 
   const [searchTerm, setSearchTerm] = useState('')
   const [sortByWorkload, setSortByWorkload] = useState(false)
 
-  const patientId = currentCase.id || '#PN-0123'
-  const patientNama = currentCase.nama || 'Gracella Uhuy'
-  const aiScore = currentCase.aiResult?.confidence || 90
-  const aiDiagnosis = currentCase.aiResult?.diagnosis || 'Pneumonia'
+  const defaultId = isBone ? '#KT-0124' : isBrain ? '#TO-0125' : '#PN-0123'
+  const defaultNama = isBone ? 'Nabila Putri' : isBrain ? 'Raka Pratama' : 'Gracella Uhuy'
+  const defaultScore = isBone ? 94 : isBrain ? 92 : 90
+  const defaultDiag = isBone ? 'Kanker Tulang (Osteosarcoma)' : isBrain ? 'Tumor Otak (Meningioma)' : 'Pneumonia'
+
+  const patientId = currentCase.id || defaultId
+  const patientNama = currentCase.nama || defaultNama
+  const aiScore = currentCase.aiResult?.confidence || defaultScore
+  const aiDiagnosis = currentCase.aiResult?.diagnosis || defaultDiag
 
   const filteredDoctors = doctors
     .filter((d) =>
@@ -66,14 +77,17 @@ export default function ManualAssignment() {
 
   const handleAssignDoctor = (doctorName: string) => {
     assignDoctorToCase(patientId, doctorName)
-    addToast(`Penugasan berhasil: Pasien ${patientNama} ditugaskan ke ${doctorName}.`, 'success')
-    nav('/faskes-3t/detail/radiolog')
+    nav(`${currentModule.basePath}/detail/radiolog`)
+  }
+
+  const handleBackToPatientData = () => {
+    nav(`${currentModule.basePath}/detail/radiolog`)
   }
 
   return (
     <>
       <div className="back-row">
-        <button type="button" className="btn btn-outline btn-lg" onClick={() => nav(-1)}>
+        <button type="button" className="btn btn-outline btn-lg" onClick={handleBackToPatientData}>
           <ChevronLeft size={16} /> Kembali
         </button>
         <b style={{ fontSize: 16 }}>Manual Assignment</b>

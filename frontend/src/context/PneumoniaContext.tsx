@@ -25,7 +25,7 @@ export interface PneumoniaContextType {
   autoAssignDoctor: (caseId: string) => string
   verifyCase: (
     caseId: string,
-    result: 'Bukan Pneumonia' | 'Pneumonia Terkonfirmasi' | 'Perlu Pemeriksaan Ulang',
+    result: string,
     notes: string
   ) => void
   toasts: ToastMessage[]
@@ -112,6 +112,40 @@ const initialCases: PatientRecord[] = [
     status: 'terverifikasi',
     createdAt: '2026-10-19',
   },
+  {
+    id: '#KT-0124',
+    nama: 'Nabila Putri',
+    dd: '18',
+    mm: 'Okt',
+    yyyy: '2002',
+    gender: 'P',
+    gejala: 'Nyeri tulang tumpul pada tungkai bawah kanan, teraba massa/pembengkakan lokal sejak 3 minggu.',
+    files: [{ name: 'rontgen-femur-nabila.jpeg', size: '138.KB', url: '/sample-xray.jpeg' }],
+    aiResult: { diagnosis: 'Kanker Tulang (Osteosarcoma)', confidence: 94, finding: 'Lesi osteolitik metafisis distal disertai reaksi periosteal sunburst.' },
+    radiologist: 'Dr. Nadia',
+    verificationDate: '18/10/2026',
+    verificationResult: 'Kanker Tulang Terkonfirmasi',
+    verificationNotes: 'Lesi osteolitik ganas konsisten dengan osteosarkoma tingkat tinggi.',
+    status: 'terverifikasi',
+    createdAt: '2026-10-18',
+  },
+  {
+    id: '#TO-0125',
+    nama: 'Raka Pratama',
+    dd: '17',
+    mm: 'Okt',
+    yyyy: '1997',
+    gender: 'L',
+    gejala: 'Nyeri kepala hebat kronis memberat di pagi hari, muntah proyektil, defisit neurologis fokal.',
+    files: [{ name: 'mri-brain-raka.jpeg', size: '154.KB', url: '/sample-xray.jpeg' }],
+    aiResult: { diagnosis: 'Tumor Otak (Meningioma)', confidence: 92, finding: 'Massa ekstra-aksial lobus frontoparietal berbatas tegas dengan perifocal edema.' },
+    radiologist: 'Dr. Arif',
+    verificationDate: '17/10/2026',
+    verificationResult: 'Tumor Otak Terkonfirmasi',
+    verificationNotes: 'Massa lobus frontoparietal berbatas tegas menyokong kecurigaan meningioma.',
+    status: 'terverifikasi',
+    createdAt: '2026-10-17',
+  },
 ]
 
 const emptyCase: PatientRecord = {
@@ -173,7 +207,8 @@ export const PneumoniaProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const addToast = (text: string, type: 'success' | 'info' | 'warning' = 'info') => {
     const id = Math.random().toString(36).substring(2, 9)
-    setToasts((prev: ToastMessage[]) => [...prev, { id, text, type }])
+    // Always keep only 1 active toast at any time
+    setToasts([{ id, text, type }])
     setTimeout(() => {
       setToasts((prev: ToastMessage[]) => prev.filter((t) => t.id !== id))
     }, 3500)
@@ -280,15 +315,14 @@ export const PneumoniaProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       })
     )
 
-    if (currentCase.id === caseId) {
-      setCurrentCase((prev: PatientRecord) => ({
-        ...prev,
-        radiologist: doctorName,
-        status: 'proses',
-      }))
-    }
+    setCurrentCase((prev: PatientRecord) => ({
+      ...(prev.nama ? prev : initialPatient),
+      id: caseId,
+      radiologist: doctorName,
+      status: 'proses',
+    }))
 
-    addToast(`Pemeriksaan ${caseId} berhasil ditugaskan ke ${doctorName}.`, 'success')
+    addToast(`Pasien dengan nomor ${caseId} berhasil diassign ke ${doctorName}`, 'success')
   }
 
   const autoAssignDoctor = (caseId: string): string => {
@@ -300,7 +334,7 @@ export const PneumoniaProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
   const verifyCase = (
     caseId: string,
-    result: 'Bukan Pneumonia' | 'Pneumonia Terkonfirmasi' | 'Perlu Pemeriksaan Ulang',
+    result: string,
     notes: string
   ) => {
     const today = new Date()

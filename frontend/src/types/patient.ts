@@ -24,7 +24,7 @@ export interface PatientRecord {
   }
   radiologist?: string
   verificationDate?: string
-  verificationResult?: 'Bukan Pneumonia' | 'Pneumonia Terkonfirmasi' | 'Perlu Pemeriksaan Ulang'
+  verificationResult?: string
   verificationNotes?: string
   status: 'draft' | 'menunggu' | 'proses' | 'terverifikasi'
   createdAt: string

@@ -1,13 +1,14 @@
 import React, { useState, useRef } from 'react'
 import { Download, Image as ImageIcon, Info, Trash2, UploadCloud, Sparkles, Loader2, CheckCircle2 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
-import PneumoniaLayout from '../components/PneumoniaTabs'
+import { useNavigate, useLocation } from 'react-router-dom'
+import PneumoniaLayout, { getModuleInfo } from '../components/PneumoniaTabs'
 import { PatientCard } from '../components/PatientData'
-import { samplePatient } from '../types/patient'
+import { samplePatient, type Patient } from '../types/patient'
 import { usePneumonia } from '../context/PneumoniaContext'
 
 export default function BuatPemeriksaan({ filled = false }: { filled?: boolean }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const { currentCase, setCurrentCase, saveCurrentAsDraft, startAnalysis, addToast } = usePneumonia()
 
   const [isDragging, setIsDragging] = useState(false)
@@ -15,25 +16,53 @@ export default function BuatPemeriksaan({ filled = false }: { filled?: boolean }
   const [analysisStep, setAnalysisStep] = useState(0)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  const currentModule = getModuleInfo(location.pathname)
+  const isBone = currentModule.type === 'kanker-tulang'
+  const isBrain = currentModule.type === 'tumor-otak'
+
+  const modulePatient: Patient = isBone
+    ? {
+        id: '#KT-0124',
+        nama: 'Nabila Putri',
+        dd: '18',
+        mm: 'Okt',
+        yyyy: '2002',
+        gender: 'P',
+        gejala:
+          'Pasien mengeluh nyeri tulang tumpul pada tungkai bawah kanan yang memberat di malam hari, teraba massa/pembengkakan lokal sejak 3 minggu terakhir.',
+      }
+    : isBrain
+    ? {
+        id: '#TO-0125',
+        nama: 'Raka Pratama',
+        dd: '17',
+        mm: 'Okt',
+        yyyy: '1997',
+        gender: 'L',
+        gejala:
+          'Nyeri kepala hebat kronis memberat di pagi hari, disertai muntah proyektil, penurunan tajam penglihatan, dan defisit neurologis fokal.',
+      }
+    : samplePatient
+
   // Initialize with filled data if route is /buat/terisi or prop filled is true
   React.useEffect(() => {
     if (filled) {
       setCurrentCase((prev) => ({
         ...prev,
-        id: samplePatient.id,
-        nama: samplePatient.nama,
-        dd: samplePatient.dd,
-        mm: samplePatient.mm,
-        yyyy: samplePatient.yyyy,
-        gender: samplePatient.gender,
-        gejala: samplePatient.gejala || '',
+        id: modulePatient.id,
+        nama: modulePatient.nama,
+        dd: modulePatient.dd,
+        mm: modulePatient.mm,
+        yyyy: modulePatient.yyyy,
+        gender: modulePatient.gender,
+        gejala: modulePatient.gejala || '',
         files: [
           { name: 'untitled-attachment01.jpeg', size: '128.KB', url: '/sample-xray.jpeg' },
           { name: 'untitled-attachment02.jpeg', size: '128.KB', url: '/sample-xray.jpeg' },
         ],
       }))
     }
-  }, [filled, setCurrentCase])
+  }, [filled, setCurrentCase, modulePatient.id, modulePatient.nama, modulePatient.dd, modulePatient.mm, modulePatient.yyyy, modulePatient.gender, modulePatient.gejala])
 
   const handlePatientChange = (updated: any) => {
     setCurrentCase((prev) => ({
@@ -95,19 +124,19 @@ export default function BuatPemeriksaan({ filled = false }: { filled?: boolean }
   const handleFillSample = () => {
     setCurrentCase((prev) => ({
       ...prev,
-      id: samplePatient.id,
-      nama: samplePatient.nama,
-      dd: samplePatient.dd,
-      mm: samplePatient.mm,
-      yyyy: samplePatient.yyyy,
-      gender: samplePatient.gender,
-      gejala: samplePatient.gejala || '',
+      id: modulePatient.id,
+      nama: modulePatient.nama,
+      dd: modulePatient.dd,
+      mm: modulePatient.mm,
+      yyyy: modulePatient.yyyy,
+      gender: modulePatient.gender,
+      gejala: modulePatient.gejala || '',
       files: [
         { name: 'untitled-attachment01.jpeg', size: '128.KB', url: '/sample-xray.jpeg' },
         { name: 'untitled-attachment02.jpeg', size: '128.KB', url: '/sample-xray.jpeg' },
       ],
     }))
-    addToast('Data contoh pasien terisi otomatis.', 'info')
+    addToast(`Data contoh pasien (${isBone ? 'Kanker Tulang' : isBrain ? 'Tumor Otak' : 'Pneumonia'}) terisi otomatis.`, 'info')
   }
 
   const handleStartAnalysis = async () => {
@@ -123,10 +152,34 @@ export default function BuatPemeriksaan({ filled = false }: { filled?: boolean }
     }, 1400)
 
     setTimeout(async () => {
-      await startAnalysis()
+      const targetAiResult = isBone
+        ? {
+            diagnosis: 'Kanker Tulang (Osteosarcoma)',
+            confidence: 94,
+            finding: 'Lesi osteolitik kortikal disertai reaksi periosteal pada metafisis tulang distal.',
+          }
+        : isBrain
+        ? {
+            diagnosis: 'Tumor Otak (Meningioma)',
+            confidence: 92,
+            finding: 'Massa ekstra-aksial lobus frontoparietal berbatas tegas dengan perifocal edema.',
+          }
+        : {
+            diagnosis: 'Pneumonia',
+            confidence: 90,
+            finding: 'Infiltrasi bercak opasitas pada lobus bawah paru kanan konsisten dengan gambaran pneumonia.',
+          }
+
+      const res = await startAnalysis()
+      setCurrentCase((prev) => ({
+        ...prev,
+        ...res,
+        aiResult: targetAiResult,
+      }))
+
       setIsAnalyzing(false)
-      addToast('Analisis AI selesai! Hasil deteksi siap ditinjau.', 'success')
-      navigate('/faskes-3t/detail/hasil-ai')
+      addToast(`Analisis AI (${currentModule.title}) selesai! Hasil deteksi siap ditinjau.`, 'success')
+      navigate(`${currentModule.basePath}/detail/hasil-ai`)
     }, 2000)
   }
 
@@ -343,9 +396,13 @@ export default function BuatPemeriksaan({ filled = false }: { filled?: boolean }
                 <Sparkles size={24} />
               </div>
               <div>
-                <b style={{ fontSize: 16 }}>Model AI Teleradiologi Sedang Menganalisis</b>
+                <b style={{ fontSize: 16 }}>Model AI {currentModule.title} Sedang Menganalisis</b>
                 <div className="muted" style={{ fontSize: 12 }}>
-                  Memproses citra radiologi toraks &amp; mengevaluasi data klinis
+                  {isBone
+                    ? 'Memproses citra radiografi tulang ekstremitas & mengevaluasi data klinis'
+                    : isBrain
+                    ? 'Memproses citra MRI/CT scan otak & mengevaluasi defisit neurologis'
+                    : 'Memproses citra radiologi toraks & mengevaluasi data klinis'}
                 </div>
               </div>
             </div>
@@ -353,15 +410,33 @@ export default function BuatPemeriksaan({ filled = false }: { filled?: boolean }
             <div className="ai-steps" style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '14px 0' }}>
               <div className={`ai-step ${analysisStep >= 1 ? 'active' : ''}`}>
                 {analysisStep > 1 ? <CheckCircle2 size={16} color="var(--tertiary-600)" /> : <Loader2 size={16} className="spin" />}
-                <span>Ekstraksi fitur dan pre-processing citra rontgen toraks</span>
+                <span>
+                  {isBone
+                    ? 'Ekstraksi fitur dan normalisasi citra radiografi tulang'
+                    : isBrain
+                    ? 'Ekstraksi voxel dan koreksi kontras sekuens MRI otak'
+                    : 'Ekstraksi fitur dan pre-processing citra rontgen toraks'}
+                </span>
               </div>
               <div className={`ai-step ${analysisStep >= 2 ? 'active' : ''}`}>
                 {analysisStep > 2 ? <CheckCircle2 size={16} color="var(--tertiary-600)" /> : analysisStep === 2 ? <Loader2 size={16} className="spin" /> : <div className="step-dot" />}
-                <span>Inference model deep learning (DenseNet121)</span>
+                <span>
+                  {isBone
+                    ? 'Inference model deep learning (YOLOv8 / ResNet50 - Bone Lesion Classifier)'
+                    : isBrain
+                    ? 'Inference model deep learning (UNet / EfficientNet - Brain Tumor Segmentation)'
+                    : 'Inference model deep learning (DenseNet121 - Pneumonia Classifier)'}
+                </span>
               </div>
               <div className={`ai-step ${analysisStep >= 3 ? 'active' : ''}`}>
                 {analysisStep >= 3 ? <CheckCircle2 size={16} color="var(--tertiary-600)" /> : <div className="step-dot" />}
-                <span>Perhitungan confidence score &amp; lokalisasi lesi pneumonia</span>
+                <span>
+                  {isBone
+                    ? 'Perhitungan confidence score & lokalisasi lesi osteolitik/osteosarkoma'
+                    : isBrain
+                    ? 'Perhitungan confidence score & segmentasi massa intrakranial (Meningioma)'
+                    : 'Perhitungan confidence score & lokalisasi lesi pneumonia'}
+                </span>
               </div>
             </div>
 

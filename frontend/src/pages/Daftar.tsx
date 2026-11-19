@@ -1,27 +1,38 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Filter, Search } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
-import PneumoniaLayout from '../components/PneumoniaTabs'
+import { useNavigate, useLocation } from 'react-router-dom'
+import PneumoniaLayout, { getModuleInfo } from '../components/PneumoniaTabs'
 import { usePneumonia, type PatientRecord } from '../context/PneumoniaContext'
 
 export default function Daftar({ variant }: { variant: 'proses' | 'terverifikasi' }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const { cases, setCurrentCase } = usePneumonia()
 
+  const currentModule = getModuleInfo(location.pathname)
+  const isBone = currentModule.type === 'kanker-tulang'
+  const isBrain = currentModule.type === 'tumor-otak'
+
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterType, setFilterType] = useState<'all' | 'pneumonia' | 'non_pneumonia'>('all')
+  const [filterType, setFilterType] = useState<'all' | 'detected' | 'non_detected'>('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [showFilterDropdown, setShowFilterDropdown] = useState(false)
 
   const isProses = variant === 'proses'
+  const idPrefix = isBone ? '#KT-012' : isBrain ? '#TO-012' : '#PN-012'
+  const diseaseName = currentModule.title
+  const confirmedLabel = `${diseaseName} Terkonfirmasi`
+  const negativeLabel = `Bukan ${diseaseName}`
+  const defaultDoc = isBone ? 'Dr. Nadia' : isBrain ? 'Dr. Arif' : 'Dr. Tama'
 
-  // Filter cases matching variant status
+  // Filter cases matching variant status & module
   const matchedStatusCases = cases.filter((c) => {
-    if (isProses) {
-      return c.status === 'proses' || c.status === 'menunggu'
-    } else {
-      return c.status === 'terverifikasi'
-    }
+    const statusMatch = isProses ? (c.status === 'proses' || c.status === 'menunggu') : c.status === 'terverifikasi'
+    if (!statusMatch) return false
+
+    if (isBone) return c.id.startsWith('#KT-')
+    if (isBrain) return c.id.startsWith('#TO-')
+    return c.id.startsWith('#PN-')
   })
 
   // Generate 10 standard mockup rows if fewer items to preserve the table fullness from Figma
@@ -30,23 +41,37 @@ export default function Daftar({ variant }: { variant: 'proses' | 'terverifikasi
   if (baseList.length < targetCount) {
     for (let i = baseList.length; i < targetCount; i++) {
       const isEven = i % 2 === 0
+      const sampleName = isBone
+        ? (isEven ? 'Nabila Putri' : i % 3 === 0 ? 'Dimas Anggara' : 'Anisa Maharani')
+        : isBrain
+        ? (isEven ? 'Raka Pratama' : i % 3 === 0 ? 'Dian Sastrowardoyo' : 'Farhan Maulana')
+        : (isEven ? 'Gracella Uhuy' : i % 3 === 0 ? 'Budi Pratama' : 'Siti Rahma')
+
       baseList.push({
-        id: `#PN-012${i}`,
-        nama: isEven ? 'Gracella Uhuy' : i % 3 === 0 ? 'Budi Pratama' : 'Siti Rahma',
+        id: `${idPrefix}${i}`,
+        nama: sampleName,
         dd: '01',
         mm: 'Mei',
         yyyy: '2000',
         gender: isEven ? 'P' : 'L',
-        gejala: 'Batuk berdahak, sesak ringan.',
+        gejala: isBone
+          ? 'Nyeri tulang tumpul memberat malam hari.'
+          : isBrain
+          ? 'Nyeri kepala hebat disertai defisit neurologis fokal.'
+          : 'Batuk berdahak, sesak ringan.',
         files: [{ name: 'untitled-attachment01.jpeg', size: '128.KB', url: '/sample-xray.jpeg' }],
         aiResult: {
-          diagnosis: isEven ? 'Pneumonia' : 'Bukan Pneumonia',
-          confidence: 90,
-          finding: 'Normal thorax or mild infiltrate.',
+          diagnosis: isEven ? diseaseName : negativeLabel,
+          confidence: 90 + (i % 8),
+          finding: isBone
+            ? 'Lesi osteolitik kortikal disertai reaksi periosteal.'
+            : isBrain
+            ? 'Massa frontoparietal berbatas tegas.'
+            : 'Normal thorax or mild infiltrate.',
         },
-        radiologist: 'Dr. Tama',
+        radiologist: defaultDoc,
         verificationDate: isProses ? undefined : '19/10/2026',
-        verificationResult: isProses ? undefined : (isEven ? 'Pneumonia Terkonfirmasi' : 'Bukan Pneumonia'),
+        verificationResult: isProses ? undefined : (isEven ? confirmedLabel : negativeLabel),
         status: isProses ? 'proses' : 'terverifikasi',
         createdAt: '2026-10-19',
       })
@@ -62,11 +87,11 @@ export default function Daftar({ variant }: { variant: 'proses' | 'terverifikasi
 
     if (!matchesSearch) return false
 
-    if (filterType === 'pneumonia') {
-      return item.aiResult?.diagnosis.toLowerCase().includes('pneumonia')
+    if (filterType === 'detected') {
+      return item.aiResult?.diagnosis.toLowerCase().includes(diseaseName.toLowerCase()) && !item.aiResult?.diagnosis.toLowerCase().includes('bukan')
     }
-    if (filterType === 'non_pneumonia') {
-      return item.aiResult?.diagnosis.toLowerCase().includes('bukan')
+    if (filterType === 'non_detected') {
+      return item.aiResult?.diagnosis.toLowerCase().includes('bukan') || item.aiResult?.diagnosis.toLowerCase().includes('tidak')
     }
     return true
   })
@@ -76,9 +101,9 @@ export default function Daftar({ variant }: { variant: 'proses' | 'terverifikasi
   const handleRowClick = (patient: PatientRecord) => {
     setCurrentCase(patient)
     if (isProses) {
-      navigate('/faskes-3t/detail/radiolog')
+      navigate(`${currentModule.basePath}/detail/radiolog`)
     } else {
-      navigate('/faskes-3t/detail/hasil')
+      navigate(`${currentModule.basePath}/detail/hasil`)
     }
   }
 
@@ -105,7 +130,7 @@ export default function Daftar({ variant }: { variant: 'proses' | 'terverifikasi
           <Filter size={16} />
           {filterType !== 'all' && (
             <span style={{ fontSize: 12 }}>
-              {filterType === 'pneumonia' ? 'Pneumonia' : 'Bukan Pneumonia'}
+              {filterType === 'detected' ? diseaseName : negativeLabel}
             </span>
           )}
         </button>
@@ -143,25 +168,25 @@ export default function Daftar({ variant }: { variant: 'proses' | 'terverifikasi
             </button>
             <button
               type="button"
-              className={`btn ${filterType === 'pneumonia' ? 'btn-neutral' : 'btn-white'}`}
+              className={`btn ${filterType === 'detected' ? 'btn-neutral' : 'btn-white'}`}
               style={{ justifyContent: 'flex-start', fontSize: 13 }}
               onClick={() => {
-                setFilterType('pneumonia')
+                setFilterType('detected')
                 setShowFilterDropdown(false)
               }}
             >
-              Hanya Pneumonia
+              Hanya {diseaseName}
             </button>
             <button
               type="button"
-              className={`btn ${filterType === 'non_pneumonia' ? 'btn-neutral' : 'btn-white'}`}
+              className={`btn ${filterType === 'non_detected' ? 'btn-neutral' : 'btn-white'}`}
               style={{ justifyContent: 'flex-start', fontSize: 13 }}
               onClick={() => {
-                setFilterType('non_pneumonia')
+                setFilterType('non_detected')
                 setShowFilterDropdown(false)
               }}
             >
-              Bukan Pneumonia
+              {negativeLabel}
             </button>
           </div>
         )}
@@ -188,9 +213,9 @@ export default function Daftar({ variant }: { variant: 'proses' | 'terverifikasi
           </thead>
           <tbody>
             {filteredList.map((r, i) => {
-              const aiDisplay = `${r.aiResult?.diagnosis || 'Pneumonia'} | ${r.aiResult?.confidence || 90}%`
+              const aiDisplay = `${r.aiResult?.diagnosis || diseaseName} | ${r.aiResult?.confidence || 90}%`
               const tglDisplay = isProses ? '-' : (r.verificationDate || '19/10/2026')
-              const hasilDisplay = isProses ? 'Dalam Antrean' : (r.verificationResult || 'Bukan Pneumonia')
+              const hasilDisplay = isProses ? 'Dalam Antrean' : (r.verificationResult || negativeLabel)
 
               return (
                 <tr
@@ -199,7 +224,20 @@ export default function Daftar({ variant }: { variant: 'proses' | 'terverifikasi
                   onClick={() => handleRowClick(r)}
                   className="table-row-hover"
                 >
-                  <td style={{ fontWeight: 600 }}>{r.id}</td>
+                  <td style={{ fontWeight: 600 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span
+                        style={{
+                          width: 3,
+                          height: 16,
+                          backgroundColor: currentModule.color,
+                          borderRadius: 2,
+                          flexShrink: 0,
+                        }}
+                      />
+                      <span>{r.id}</span>
+                    </div>
+                  </td>
                   <td>{r.nama}</td>
                   <td>
                     <span
@@ -207,15 +245,15 @@ export default function Daftar({ variant }: { variant: 'proses' | 'terverifikasi
                         padding: '2px 8px',
                         borderRadius: 4,
                         fontSize: 12,
-                        background: r.aiResult?.diagnosis === 'Pneumonia' ? 'var(--secondary-200)' : 'var(--primary-100)',
-                        color: r.aiResult?.diagnosis === 'Pneumonia' ? 'var(--secondary-1000)' : 'var(--primary-600)',
+                        background: 'var(--secondary-200)',
+                        color: 'var(--secondary-1000)',
                         fontWeight: 600,
                       }}
                     >
                       {aiDisplay}
                     </span>
                   </td>
-                  <td>{r.radiologist || 'Dr. Tama'}</td>
+                  <td>{r.radiologist || defaultDoc}</td>
                   <td>{tglDisplay}</td>
                   <td>
                     <span

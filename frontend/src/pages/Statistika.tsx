@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, Download, Calendar } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
-import PneumoniaLayout from '../components/PneumoniaTabs'
+import { useNavigate, useLocation } from 'react-router-dom'
+import PneumoniaLayout, { getModuleInfo } from '../components/PneumoniaTabs'
 import { usePneumonia, type PatientRecord } from '../context/PneumoniaContext'
 
 type Period = 'Harian' | 'Bulanan' | 'Tahunan'
@@ -60,7 +60,12 @@ const statsByPeriod: Record<Period, PeriodData> = {
 
 export default function Statistika() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { cases, setCurrentCase, addToast } = usePneumonia()
+
+  const currentModule = getModuleInfo(location.pathname)
+  const isBone = currentModule.type === 'kanker-tulang'
+  const isBrain = currentModule.type === 'tumor-otak'
 
   const [period, setPeriod] = useState<Period>('Harian')
   const [dateRange, setDateRange] = useState('Mar 27 - Apr 23, 2026')
@@ -70,25 +75,103 @@ export default function Statistika() {
   const activeStats = statsByPeriod[period]
 
   const handleDownloadReport = () => {
+    const defaultCsvPrefix = isBone ? '#KT-012' : isBrain ? '#TO-012' : '#PN-012'
     const csvContent =
       'data:text/csv;charset=utf-8,ID,Nama,AI_Score,Radiolog,Tanggal,Hasil\n' +
-      '#PN-0123,Gracella Uhuy,90%,Dr. Tama,19/10/2026,Bukan Pneumonia\n' +
-      '#PN-0124,Ahmad Dani,94%,Dr. Tama,19/10/2026,Pneumonia\n' +
-      '#PN-0125,Siti Nurhaliza,88%,Dr. Bernard Bear,19/10/2026,Bukan Pneumonia\n'
+      `${defaultCsvPrefix}4,Nabila Putri,94%,Dr. Nadia,18/10/2026,Terdeteksi\n` +
+      `${defaultCsvPrefix}5,Dimas Anggara,91%,Dr. Nadia,18/10/2026,Tidak terdeteksi\n` +
+      `${defaultCsvPrefix}6,Anisa Maharani,95%,Dr. Tama,17/10/2026,Terdeteksi\n`
 
     const encodedUri = encodeURI(csvContent)
     const link = document.createElement('a')
     link.setAttribute('href', encodedUri)
-    link.setAttribute('download', `laporan-analitik-${period.toLowerCase()}.csv`)
+    link.setAttribute('download', `laporan-analitik-${currentModule.type}-${period.toLowerCase()}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    addToast(`Laporan analitik (${period}) berhasil diunduh.`, 'success')
+    addToast(`Laporan analitik ${currentModule.title} (${period}) berhasil diunduh.`, 'success')
+  }
+
+  const moduleCases = cases.filter((c) => {
+    if (isBone) return c.id.startsWith('#KT-')
+    if (isBrain) return c.id.startsWith('#TO-')
+    return c.id.startsWith('#PN-')
+  })
+
+  const displayCases: PatientRecord[] = [...moduleCases]
+  if (displayCases.length < 3) {
+    if (isBone) {
+      displayCases.push({
+        id: '#KT-0125',
+        nama: 'Dimas Anggara',
+        dd: '12',
+        mm: 'Mei',
+        yyyy: '1999',
+        gender: 'L',
+        gejala: 'Nyeri tumpul tungkai kanan.',
+        files: [{ name: 'rontgen-02.jpeg', size: '120.KB', url: '/sample-xray.jpeg' }],
+        aiResult: { diagnosis: 'Bukan Kanker Tulang', confidence: 91, finding: 'Tidak ditemukan reaksi periosteal agresif.' },
+        radiologist: 'Dr. Nadia',
+        verificationDate: '18/10/2026',
+        verificationResult: 'Bukan Kanker Tulang',
+        status: 'terverifikasi',
+        createdAt: '2026-10-18',
+      })
+      displayCases.push({
+        id: '#KT-0126',
+        nama: 'Anisa Maharani',
+        dd: '04',
+        mm: 'Jul',
+        yyyy: '2001',
+        gender: 'P',
+        gejala: 'Pembengkakan proksimal tibia kiri.',
+        files: [{ name: 'rontgen-03.jpeg', size: '135.KB', url: '/sample-xray.jpeg' }],
+        aiResult: { diagnosis: 'Kanker Tulang (Osteosarcoma)', confidence: 95, finding: 'Lesi sklerotik litik campuran.' },
+        radiologist: 'Dr. Tama',
+        verificationDate: '17/10/2026',
+        verificationResult: 'Kanker Tulang Terkonfirmasi',
+        status: 'terverifikasi',
+        createdAt: '2026-10-17',
+      })
+    } else if (isBrain) {
+      displayCases.push({
+        id: '#TO-0126',
+        nama: 'Dian Sastrowardoyo',
+        dd: '10',
+        mm: 'Mar',
+        yyyy: '1992',
+        gender: 'P',
+        gejala: 'Nyeri kepala sebelah kanan berkala.',
+        files: [{ name: 'mri-02.jpeg', size: '140.KB', url: '/sample-xray.jpeg' }],
+        aiResult: { diagnosis: 'Bukan Tumor Otak', confidence: 89, finding: 'Struktur parenkim serebri dalam batas normal.' },
+        radiologist: 'Dr. Arif',
+        verificationDate: '17/10/2026',
+        verificationResult: 'Bukan Tumor Otak',
+        status: 'terverifikasi',
+        createdAt: '2026-10-17',
+      })
+      displayCases.push({
+        id: '#TO-0127',
+        nama: 'Farhan Maulana',
+        dd: '25',
+        mm: 'Des',
+        yyyy: '1988',
+        gender: 'L',
+        gejala: 'Gangguan keseimbangan mendadak.',
+        files: [{ name: 'mri-03.jpeg', size: '160.KB', url: '/sample-xray.jpeg' }],
+        aiResult: { diagnosis: 'Tumor Otak (Meningioma)', confidence: 93, finding: 'Massa ekstra aksial frontoparietal berdensitas padat.' },
+        radiologist: 'Dr. Tama',
+        verificationDate: '16/10/2026',
+        verificationResult: 'Tumor Otak Terkonfirmasi',
+        status: 'terverifikasi',
+        createdAt: '2026-10-16',
+      })
+    }
   }
 
   const handleRowClick = (c: PatientRecord) => {
     setCurrentCase(c)
-    navigate('/faskes-3t/detail/hasil')
+    navigate(`${currentModule.basePath}/detail/hasil`)
   }
 
   const maxVal = Math.max(...activeStats.bars.map((b) => b.value))
@@ -288,7 +371,7 @@ export default function Statistika() {
             </div>
           </div>
           <div className="blk">
-            Jumlah Kasus Pneumonia Terverifikasi
+            Jumlah Kasus {currentModule.title} Terverifikasi
             <div className="big">
               {activeStats.verifiedCases}
               <span>Kasus</span>
@@ -328,14 +411,27 @@ export default function Statistika() {
             </tr>
           </thead>
           <tbody>
-            {cases.slice(0, 3).map((c, i) => (
+            {displayCases.slice(0, 3).map((c, i) => (
               <tr
                 key={c.id + i}
                 style={{ cursor: 'pointer', transition: 'background-color 0.15s ease' }}
                 onClick={() => handleRowClick(c)}
                 className="table-row-hover"
               >
-                <td style={{ fontWeight: 600 }}>{c.id}</td>
+                <td style={{ fontWeight: 600 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span
+                      style={{
+                        width: 3,
+                        height: 16,
+                        backgroundColor: currentModule.color,
+                        borderRadius: 2,
+                        flexShrink: 0,
+                      }}
+                    />
+                    <span>{c.id}</span>
+                  </div>
+                </td>
                 <td>{c.nama}</td>
                 <td>
                   <span
@@ -348,10 +444,10 @@ export default function Statistika() {
                       fontWeight: 600,
                     }}
                   >
-                    {c.aiResult ? `${c.aiResult.diagnosis} | ${c.aiResult.confidence}%` : 'Pneumonia | 90%'}
+                    {c.aiResult ? `${c.aiResult.diagnosis} | ${c.aiResult.confidence}%` : `${currentModule.title} | 90%`}
                   </span>
                 </td>
-                <td>{c.radiologist || 'Dr. Tama'}</td>
+                <td>{c.radiologist || (isBone ? 'Dr. Nadia' : isBrain ? 'Dr. Arif' : 'Dr. Tama')}</td>
                 <td>{c.verificationDate || '19/10/2026'}</td>
                 <td>
                   <span
@@ -363,7 +459,7 @@ export default function Statistika() {
                       color: 'var(--primary-600)',
                     }}
                   >
-                    {c.verificationResult || 'Bukan Pneumonia'}
+                    {c.verificationResult || (isBone ? 'Terdeteksi' : isBrain ? 'Terdeteksi' : 'Bukan Pneumonia')}
                   </span>
                 </td>
                 <td>

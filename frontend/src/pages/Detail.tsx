@@ -12,10 +12,11 @@ import {
   FileText,
   UserCheck,
 } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { PatientCard } from '../components/PatientData'
 import { samplePatient } from '../types/patient'
 import { usePneumonia } from '../context/PneumoniaContext'
+import { getModuleInfo } from '../components/PneumoniaTabs'
 
 type Variant = 'ai' | 'menunggu' | 'radiolog' | 'hasil'
 
@@ -41,6 +42,11 @@ function ResultPanel({
   patientData: any
   onVerifyClick: () => void
 }) {
+  const location = useLocation()
+  const currentModule = getModuleInfo(location.pathname)
+  const isBone = currentModule.type === 'kanker-tulang'
+  const isBrain = currentModule.type === 'tumor-otak'
+
   const [zoom, setZoom] = useState(1)
   const [showOverlay, setShowOverlay] = useState(variant === 'ai' || variant === 'radiolog')
 
@@ -56,9 +62,15 @@ function ResultPanel({
     a.click()
   }
 
-  const doctorName = patientData?.radiologist || 'Dr. Bernard Bear'
-  const aiScore = patientData?.aiResult?.confidence || 90
-  const aiDiagnosis = patientData?.aiResult?.diagnosis || 'Pneumonia'
+  const doctorName = patientData?.radiologist || (isBone ? 'Dr. Nadia' : isBrain ? 'Dr. Arif' : 'Dr. Bernard Bear')
+  const aiScore = patientData?.aiResult?.confidence || (isBone ? 94 : isBrain ? 92 : 90)
+  const aiDiagnosis = patientData?.aiResult?.diagnosis || currentModule.title
+
+  const overlayTitle = isBone
+    ? `Lesi Osteolitik Metafisis (${aiScore}%)`
+    : isBrain
+    ? `Massa Frontoparietal (${aiScore}%)`
+    : `Infiltrat Paru Kanan (${aiScore}%)`
 
   return (
     <div className="panel">
@@ -109,25 +121,33 @@ function ResultPanel({
         <div className="summary" style={{ background: '#f5f5f5' }}>
           <div className="r">
             <b>Nama Radiologi</b>
-            <span>{patientData?.radiologist || 'Dr. Bernard Bear'}</span>
+            <span>{doctorName}</span>
           </div>
           <div className="r">
             <b>Tanggal diverifikasi</b>
-            <span>{patientData?.verificationDate || '10/10/2026'}</span>
+            <span>{patientData?.verificationDate || '19/10/2026'}</span>
           </div>
           <div className="r">
             <b>Hasil Verifikasi</b>
             <span style={{ textAlign: 'right' }}>
-              <b style={{ fontSize: 13 }}>{patientData?.verificationResult || 'Bukan Pneumonia'}</b>
+              <b style={{ fontSize: 13 }}>
+                {patientData?.verificationResult || (isBone ? 'Kanker Tulang Terkonfirmasi' : isBrain ? 'Tumor Otak Terkonfirmasi' : 'Bukan Pneumonia')}
+              </b>
               <br />
-              <span style={{ fontSize: 11, color: 'var(--neutral-400)' }}>(Hasil Deteksi AI ditolak)</span>
+              <span style={{ fontSize: 11, color: 'var(--neutral-400)' }}>
+                {patientData?.verificationResult?.includes('Bukan') ? '(Hasil Deteksi AI ditolak)' : '(Hasil Deteksi AI dikonfirmasi)'}
+              </span>
             </span>
           </div>
           <div>
             <b>Catatan</b>
             <div style={{ marginTop: 4, lineHeight: 1.4 }}>
               {patientData?.verificationNotes ||
-                'Pasien datang dengan keluhan sesak napas yang meningkat sejak [X] hari, disertai batuk berdahak kental dan demam naik-turun.'}
+                (isBone
+                  ? 'Lesi osteolitik ganas pada metafisis distal femur konsisten dengan kecurigaan osteosarkoma.'
+                  : isBrain
+                  ? 'Massa soliter ekstra-aksial lobus frontoparietal berbatas tegas dengan tanda perifocal edema.'
+                  : 'Pasien datang dengan keluhan sesak napas yang meningkat sejak [X] hari, disertai batuk berdahak kental dan demam naik-turun.')}
             </div>
           </div>
         </div>
@@ -208,7 +228,7 @@ function ResultPanel({
                   whiteSpace: 'nowrap',
                 }}
               >
-                Infiltrat Paru Kanan (90%)
+                {overlayTitle}
               </div>
             </div>
           )}
@@ -280,37 +300,57 @@ function ResultPanel({
 
 export default function Detail({ variant }: { variant: Variant }) {
   const nav = useNavigate()
-  const { currentCase, autoAssignDoctor, verifyCase, addToast } = usePneumonia()
+  const location = useLocation()
+  const currentModule = getModuleInfo(location.pathname)
+  const isBone = currentModule.type === 'kanker-tulang'
+  const isBrain = currentModule.type === 'tumor-otak'
+
+  const diseaseName = currentModule.title
+  const negativeDecision = `Bukan ${diseaseName}`
+  const positiveDecision = `${diseaseName} Terkonfirmasi`
+
+  const { currentCase, autoAssignDoctor, verifyCase } = usePneumonia()
 
   const [verifyModalOpen, setVerifyModalOpen] = useState(false)
-  const [verifyResult, setVerifyResult] = useState<'Bukan Pneumonia' | 'Pneumonia Terkonfirmasi'>('Bukan Pneumonia')
+  const [verifyResult, setVerifyResult] = useState<string>(negativeDecision)
   const [verifyNotes, setVerifyNotes] = useState(
-    'Pasien datang dengan keluhan sesak napas yang meningkat sejak [X] hari, disertai batuk berdahak kental dan demam naik-turun. Opasitas lebih mengarah pada atelektasis ringan.'
+    isBone
+      ? 'Lesi osteolitik ganas pada metafisis distal femur konsisten dengan kecurigaan osteosarkoma.'
+      : isBrain
+      ? 'Massa soliter ekstra-aksial lobus frontoparietal berbatas tegas dengan tanda perifocal edema.'
+      : 'Pasien datang dengan keluhan sesak napas yang meningkat sejak [X] hari, disertai batuk berdahak kental dan demam naik-turun. Opasitas lebih mengarah pada atelektasis ringan.'
   )
 
   // Use currentCase if valid, otherwise fallback to samplePatient
   const activePatient = currentCase?.nama ? currentCase : samplePatient
 
   const handleAutoAssign = () => {
-    const assignedDoc = autoAssignDoctor(activePatient.id)
-    addToast(`Penugasan otomatis berhasil! Pasien diserahkan kepada ${assignedDoc}.`, 'success')
-    nav('/faskes-3t/detail/radiolog')
+    autoAssignDoctor(activePatient.id)
+    nav(`${currentModule.basePath}/detail/radiolog`)
   }
 
   const handleManualAssign = () => {
-    nav('/faskes-3t/assignment')
+    nav(`${currentModule.basePath}/assignment`)
   }
 
   const handleConfirmVerification = () => {
     verifyCase(activePatient.id, verifyResult, verifyNotes)
     setVerifyModalOpen(false)
-    nav('/faskes-3t/detail/hasil')
+    nav(`${currentModule.basePath}/detail/hasil`)
+  }
+
+  const handleBack = () => {
+    if (variant === 'radiolog') {
+      nav(`${currentModule.basePath}/proses`)
+    } else {
+      nav(-1)
+    }
   }
 
   return (
     <>
       <div className="back-row">
-        <button type="button" className="btn btn-outline btn-lg" onClick={() => nav(-1)}>
+        <button type="button" className="btn btn-outline btn-lg" onClick={handleBack}>
           <ChevronLeft size={16} /> Kembali
         </button>
       </div>
@@ -365,7 +405,7 @@ export default function Detail({ variant }: { variant: Variant }) {
           >
             <FileText size={16} /> Cetak Laporan PDF
           </button>
-          <Link to="/faskes-3t/statistika" className="btn btn-neutral btn-lg">
+          <Link to={`${currentModule.basePath}/statistika`} className="btn btn-neutral btn-lg">
             Kembali ke Dashboard
           </Link>
         </div>
@@ -385,19 +425,19 @@ export default function Detail({ variant }: { variant: Variant }) {
               <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
                 <button
                   type="button"
-                  className={`btn ${verifyResult === 'Bukan Pneumonia' ? 'btn-neutral' : 'btn-outline'}`}
-                  onClick={() => setVerifyResult('Bukan Pneumonia')}
+                  className={`btn ${verifyResult === negativeDecision ? 'btn-neutral' : 'btn-outline'}`}
+                  onClick={() => setVerifyResult(negativeDecision)}
                   style={{ flex: 1 }}
                 >
-                  <XCircle size={16} /> Tolak Hasil AI (Bukan Pneumonia)
+                  <XCircle size={16} /> Tolak Hasil AI ({negativeDecision})
                 </button>
                 <button
                   type="button"
-                  className={`btn ${verifyResult === 'Pneumonia Terkonfirmasi' ? 'btn-neutral' : 'btn-outline'}`}
-                  onClick={() => setVerifyResult('Pneumonia Terkonfirmasi')}
+                  className={`btn ${verifyResult === positiveDecision ? 'btn-neutral' : 'btn-outline'}`}
+                  onClick={() => setVerifyResult(positiveDecision)}
                   style={{ flex: 1 }}
                 >
-                  <CheckCircle size={16} /> Konfirmasi Pneumonia
+                  <CheckCircle size={16} /> Konfirmasi {diseaseName}
                 </button>
               </div>
             </div>

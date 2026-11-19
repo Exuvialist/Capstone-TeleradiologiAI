@@ -4,12 +4,39 @@ import { Airplay, CheckSquare, Clipboard, Loader, FileText, Trash2, X } from 'lu
 import type { ReactNode } from 'react'
 import { usePneumonia } from '../context/PneumoniaContext'
 
-const tabs = [
-  { to: '/faskes-3t/statistika', label: 'Statistika', icon: <Airplay size={16} /> },
-  { to: '/faskes-3t/buat', label: 'Buat Pemeriksaan', icon: <Clipboard size={16} />, also: '/faskes-3t/buat/terisi' },
-  { to: '/faskes-3t/proses', label: 'Dalam Proses', icon: <Loader size={16} /> },
-  { to: '/faskes-3t/terverifikasi', label: 'Terverifikasi', icon: <CheckSquare size={16} /> },
-]
+export type ModuleType = 'pneumonia' | 'kanker-tulang' | 'tumor-otak'
+
+interface ModuleInfo {
+  type: ModuleType
+  title: string
+  color: string
+  basePath: string
+}
+
+export function getModuleInfo(pathname: string): ModuleInfo {
+  if (pathname.includes('kanker-tulang')) {
+    return {
+      type: 'kanker-tulang',
+      title: 'Kanker Tulang',
+      color: 'var(--primary-600)',
+      basePath: '/faskes-3t/kanker-tulang',
+    }
+  }
+  if (pathname.includes('tumor-otak')) {
+    return {
+      type: 'tumor-otak',
+      title: 'Tumor Otak',
+      color: 'var(--tertiary-600)',
+      basePath: '/faskes-3t/tumor-otak',
+    }
+  }
+  return {
+    type: 'pneumonia',
+    title: 'Pneumonia',
+    color: 'var(--quaternary-600)',
+    basePath: pathname.includes('/pneumonia') ? '/faskes-3t/pneumonia' : '/faskes-3t',
+  }
+}
 
 export default function PneumoniaLayout({ children }: { children: ReactNode }) {
   const { pathname } = useLocation()
@@ -17,18 +44,45 @@ export default function PneumoniaLayout({ children }: { children: ReactNode }) {
   const { drafts, loadDraft, deleteDraft } = usePneumonia()
 
   const [showDraftsModal, setShowDraftsModal] = useState(false)
+  const currentModule = getModuleInfo(pathname)
+
+  const isLegacy = !pathname.includes('/pneumonia') && !pathname.includes('/kanker-tulang') && !pathname.includes('/tumor-otak')
+
+  const tabs = [
+    {
+      to: isLegacy ? '/faskes-3t/statistika' : `${currentModule.basePath}/statistika`,
+      label: 'Statistika',
+      icon: <Airplay size={16} />,
+    },
+    {
+      to: isLegacy ? '/faskes-3t/buat' : `${currentModule.basePath}/buat`,
+      label: 'Buat Pemeriksaan',
+      icon: <Clipboard size={16} />,
+      also: isLegacy ? '/faskes-3t/buat/terisi' : `${currentModule.basePath}/buat/terisi`,
+    },
+    {
+      to: isLegacy ? '/faskes-3t/proses' : `${currentModule.basePath}/proses`,
+      label: 'Dalam Proses',
+      icon: <Loader size={16} />,
+    },
+    {
+      to: isLegacy ? '/faskes-3t/terverifikasi' : `${currentModule.basePath}/terverifikasi`,
+      label: 'Terverifikasi',
+      icon: <CheckSquare size={16} />,
+    },
+  ]
 
   const handleOpenDraft = (draftId: string) => {
     loadDraft(draftId)
     setShowDraftsModal(false)
-    navigate('/faskes-3t/buat')
+    navigate(isLegacy ? '/faskes-3t/buat' : `${currentModule.basePath}/buat`)
   }
 
   return (
     <>
       <div className="page-title">
-        <span className="sq" />
-        <span>Pneumonia</span>
+        <span className="sq" style={{ background: currentModule.color }} />
+        <span>{currentModule.title}</span>
       </div>
 
       <div className="tabrow">
@@ -57,7 +111,7 @@ export default function PneumoniaLayout({ children }: { children: ReactNode }) {
           {drafts.length > 0 && (
             <span
               style={{
-                background: 'var(--quaternary-600)',
+                background: currentModule.color,
                 color: '#fff',
                 fontSize: 10,
                 fontWeight: 700,
@@ -79,7 +133,7 @@ export default function PneumoniaLayout({ children }: { children: ReactNode }) {
         <div className="modal-backdrop">
           <div className="modal-card" style={{ maxWidth: 460 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <b style={{ fontSize: 16 }}>Daftar Draft Pemeriksaan</b>
+              <b style={{ fontSize: 16 }}>Daftar Draft ({currentModule.title})</b>
               <button
                 type="button"
                 className="btn-icon"
