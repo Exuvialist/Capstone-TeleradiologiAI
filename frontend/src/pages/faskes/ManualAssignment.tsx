@@ -61,7 +61,13 @@ export default function ManualAssignment() {
   const patientId = currentCase.id || defaultId
   const patientNama = currentCase.nama || defaultNama
   const aiScore = currentCase.aiResult?.confidence || defaultScore
-  const aiDiagnosis = currentCase.aiResult?.diagnosis || defaultDiag
+  let rawDiag = currentCase.aiResult?.diagnosis || defaultDiag
+  if (isBone && rawDiag.includes('Pneumonia')) {
+    rawDiag = 'Kanker Tulang (Osteosarcoma)'
+  } else if (isBrain && rawDiag.includes('Pneumonia')) {
+    rawDiag = 'Tumor Otak (Meningioma)'
+  }
+  const aiDiagnosis = rawDiag
 
   const filteredDoctors = doctors
     .filter((d) =>

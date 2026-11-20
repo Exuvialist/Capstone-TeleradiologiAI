@@ -185,17 +185,25 @@ export default function Dashboard() {
 
   const dynamicTableRows = useMemo(() => {
     const liveList = cases.slice(0, 5).map((c) => {
-      const diag = c.aiResult?.diagnosis || 'Pneumonia'
       const conf = c.aiResult?.confidence || 90
-      const isBone = diag.includes('Kanker') || c.id.startsWith('#KT-')
-      const isBrain = diag.includes('Tumor') || c.id.startsWith('#TO-')
-      const cat = isBone ? 'Kanker Tulang' : isBrain ? 'Tumor Otak' : 'Pneumonia'
+      const isBone = c.id.startsWith('#KT-')
+      const isBrain = c.id.startsWith('#TO-')
+      const defaultCat = isBone ? 'Kanker Tulang' : isBrain ? 'Tumor Otak' : 'Pneumonia'
+      let diag = c.aiResult?.diagnosis || defaultCat
+      if (isBone && diag.includes('Pneumonia')) {
+        diag = diag.includes('Bukan') ? 'Bukan Kanker Tulang' : 'Kanker Tulang'
+      } else if (isBrain && diag.includes('Pneumonia')) {
+        diag = diag.includes('Bukan') ? 'Bukan Tumor Otak' : 'Tumor Otak'
+      }
+      const cat = defaultCat
+      const isNeg = diag.toLowerCase().includes('bukan') || diag.toLowerCase().includes('tidak')
+      const aiLabel = isNeg ? (cat.startsWith('Bukan ') ? cat : `Bukan ${cat}`) : cat
       const dStr = formatDisplayDate(c.verificationDate || c.createdAt)
       return {
         id: c.id,
         nama: c.nama || 'Pasien Faskes',
         jenis: cat,
-        score: `${cat} | ${conf}%`,
+        score: `${aiLabel} | ${conf}%`,
         radiolog: c.radiologist || 'Dr. Shinyu',
         tgl: dStr,
         hasil: c.verificationResult || (c.status === 'terverifikasi' ? 'Terdeteksi' : 'Menunggu'),

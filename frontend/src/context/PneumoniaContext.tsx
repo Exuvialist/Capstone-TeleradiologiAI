@@ -37,7 +37,7 @@ export interface PneumoniaContextType {
   saveCurrentAsDraft: () => void
   loadDraft: (draftId: string) => void
   deleteDraft: (draftId: string) => void
-  startAnalysis: () => Promise<PatientRecord>
+  startAnalysis: (customAiResult?: PatientRecord['aiResult']) => Promise<PatientRecord>
   assignDoctorToCase: (caseId: string, doctorName: string) => void
   autoAssignDoctor: (caseId: string) => string
   verifyCase: (
@@ -63,6 +63,237 @@ const defaultDoctors: Doctor[] = [
   { id: 'd7', nama: 'Dr. Rizky Pratama', pengalaman: '6 Tahun', jumlahKasus: 5, spesialisasi: 'AI-Assisted Imaging' },
   { id: 'd8', nama: 'Dr. Agus Salim', pengalaman: '11 Tahun', jumlahKasus: 3, spesialisasi: 'Radiologi Klinis' },
   { id: 'd9', nama: 'Dr. Lina Marlina', pengalaman: '3 Tahun', jumlahKasus: 9, spesialisasi: 'Kedokteran Nuklir & Toraks' },
+]
+
+export const CORE_QUEUE_CASES: PatientRecord[] = [
+  {
+    id: '#PN-0123',
+    nama: 'Gracella Uhuy',
+    dd: '01',
+    mm: 'Mei',
+    yyyy: '2000',
+    gender: 'P',
+    gejala:
+      'Pasien datang dengan keluhan sesak napas yang meningkat sejak [X] hari, disertai batuk berdahak kental dan demam naik-turun. Pada pemeriksaan fisik dada, ditemukan fremitus taktil meningkat pada lapang paru [kanan/kiri] serta suara ronkhi wet basah. SpO2: [X]%.',
+    files: [{ name: 'scan-pn-0123.jpeg', size: '134.KB', url: '/sample-xray.jpeg' }],
+    aiResult: {
+      diagnosis: 'Pneumonia',
+      confidence: 90,
+      finding: 'Infiltrasi bercak opasitas pada lobus bawah paru kanan konsisten dengan gambaran pneumonia bakterial.',
+    },
+    status: 'menunggu',
+    createdAt: '2026-10-19',
+    faskes: 'Faskes Shinyu',
+  },
+  {
+    id: '#KT-0124',
+    nama: 'Nabila Putri',
+    dd: '18',
+    mm: 'Okt',
+    yyyy: '2002',
+    gender: 'P',
+    gejala:
+      'Pasien mengeluh nyeri tulang tumpul pada tungkai bawah kanan yang memberat di malam hari, teraba massa/pembengkakan lokal sejak 3 minggu terakhir.',
+    files: [{ name: 'scan-kt-0124.jpeg', size: '134.KB', url: '/sample-xray.jpeg' }],
+    aiResult: {
+      diagnosis: 'Kanker Tulang',
+      confidence: 87,
+      finding: 'Lesi osteolitik metafisis distal femur disertai reaksi periosteal sunburst.',
+    },
+    status: 'menunggu',
+    createdAt: '2026-10-19',
+    faskes: 'Faskes Dohoon',
+  },
+  {
+    id: '#TO-0125',
+    nama: 'Raka Pratama',
+    dd: '17',
+    mm: 'Okt',
+    yyyy: '1997',
+    gender: 'L',
+    gejala:
+      'Nyeri kepala hebat kronis memberat di pagi hari, disertai muntah proyektil, penurunan tajam penglihatan, dan defisit neurologis fokal.',
+    files: [{ name: 'scan-to-0125.jpeg', size: '134.KB', url: '/sample-xray.jpeg' }],
+    aiResult: {
+      diagnosis: 'Tumor Otak',
+      confidence: 94,
+      finding: 'Massa ekstra-aksial lobus frontoparietal berbatas tegas dengan perifocal edema.',
+    },
+    status: 'menunggu',
+    createdAt: '2026-10-18',
+    faskes: 'Faskes Youngjae',
+  },
+  {
+    id: '#PN-0126',
+    nama: 'Dewi Lestari',
+    dd: '15',
+    mm: 'Mei',
+    yyyy: '1995',
+    gender: 'P',
+    gejala:
+      'Pemeriksaan radiologi rutin skrining kesehatan toraks. Tidak ada sesak napas maupun demam, SpO2 normal 99%.',
+    files: [{ name: 'scan-pn-0126.jpeg', size: '134.KB', url: '/sample-xray.jpeg' }],
+    aiResult: {
+      diagnosis: 'Bukan Pneumonia',
+      confidence: 93,
+      finding:
+        'Corakan bronkovaskular dalam batas normal. Tidak tampak infiltrat, konsolidasi pneumonik, maupun efusi pleura. Cor dan pulmo normal (Bukan Pneumonia).',
+    },
+    status: 'menunggu',
+    createdAt: '2026-10-18',
+    faskes: 'Faskes Hanjin',
+  },
+  {
+    id: '#TO-0127',
+    nama: 'Dimas Anggara',
+    dd: '22',
+    mm: 'Jun',
+    yyyy: '1992',
+    gender: 'L',
+    gejala:
+      'Riwayat kejang fokal berulang pada lengan kanan, nyeri kepala frontal progresif, papiledema bilateral.',
+    files: [{ name: 'scan-to-0127.jpeg', size: '134.KB', url: '/sample-xray.jpeg' }],
+    aiResult: {
+      diagnosis: 'Tumor Otak',
+      confidence: 89,
+      finding: 'Lesi massa intra-aksial regio parasagital dengan perifocal edema ringan.',
+    },
+    status: 'menunggu',
+    createdAt: '2026-10-17',
+    faskes: 'Faskes Jihoon',
+  },
+  {
+    id: '#KT-0128',
+    nama: 'Irfan Saputra',
+    dd: '09',
+    mm: 'Sep',
+    yyyy: '2001',
+    gender: 'L',
+    gejala:
+      'Pembengkakan progresif di area distal femur kiri disertai rasa ngilu berdenyut terutama saat istirahat malam.',
+    files: [{ name: 'scan-kt-0128.jpeg', size: '134.KB', url: '/sample-xray.jpeg' }],
+    aiResult: {
+      diagnosis: 'Kanker Tulang',
+      confidence: 95,
+      finding: 'Lesi litik agresif dengan elevasi periosteum segitiga Codman.',
+    },
+    status: 'menunggu',
+    createdAt: '2026-10-17',
+    faskes: 'Faskes Kyungmin',
+  },
+  {
+    id: '#PN-0129',
+    nama: 'Budi Santoso',
+    dd: '11',
+    mm: 'Agu',
+    yyyy: '1988',
+    gender: 'L',
+    gejala:
+      'Medical check-up tahunan karyawan faskes, tidak memiliki riwayat sesak atau batuk kronis, respirasi 18x/menit reguler.',
+    files: [{ name: 'scan-pn-0129.jpeg', size: '134.KB', url: '/sample-xray.jpeg' }],
+    aiResult: {
+      diagnosis: 'Bukan Pneumonia',
+      confidence: 95,
+      finding:
+        'Jantung dan paru dalam batas normal, sinus kostofrenikus lancar tajam, tidak ada tanda pneumonia aktif.',
+    },
+    status: 'menunggu',
+    createdAt: '2026-10-16',
+    faskes: 'Faskes Shinyu',
+  },
+  {
+    id: '#KT-0130',
+    nama: 'Ratna Sari',
+    dd: '25',
+    mm: 'Nov',
+    yyyy: '1999',
+    gender: 'P',
+    gejala:
+      'Nyeri regio proksimal tibia pasca trauma ringan yang tidak kunjung sembuh, nyeri tekan lokal positif.',
+    files: [{ name: 'scan-kt-0130.jpeg', size: '134.KB', url: '/sample-xray.jpeg' }],
+    aiResult: {
+      diagnosis: 'Kanker Tulang',
+      confidence: 91,
+      finding: 'Gambaran destruksi korteks dengan reaksi periosteal lamellar pada proksimal tibia kanan.',
+    },
+    status: 'menunggu',
+    createdAt: '2026-10-16',
+    faskes: 'Faskes Dohoon',
+  },
+  {
+    id: '#TO-0131',
+    nama: 'Farhan Anwar',
+    dd: '03',
+    mm: 'Feb',
+    yyyy: '1994',
+    gender: 'L',
+    gejala:
+      'Keluhan pandangan ganda (diplopia), gangguan keseimbangan saat berjalan, pusing berputar kronis.',
+    files: [{ name: 'scan-to-0131.jpeg', size: '134.KB', url: '/sample-xray.jpeg' }],
+    aiResult: {
+      diagnosis: 'Tumor Otak',
+      confidence: 93,
+      finding: 'Massa fosa posterior cerebelopontine angle berbatas tegas.',
+    },
+    status: 'menunggu',
+    createdAt: '2026-10-15',
+    faskes: 'Faskes Youngjae',
+  },
+  {
+    id: '#PN-0132',
+    nama: 'Ahmad Hakim',
+    dd: '14',
+    mm: 'Jul',
+    yyyy: '1985',
+    gender: 'L',
+    gejala:
+      'Demam tinggi mendadak (39°C) menggigil disertai batuk produktif purulen dan nyeri dada pleuritik kanan.',
+    files: [{ name: 'scan-pn-0132.jpeg', size: '134.KB', url: '/sample-xray.jpeg' }],
+    aiResult: {
+      diagnosis: 'Pneumonia',
+      confidence: 96,
+      finding: 'Opasitas konsolidasi homogen dengan air bronchogram pada lobus inferior pulmo dextra.',
+    },
+    status: 'menunggu',
+    createdAt: '2026-10-15',
+    faskes: 'Faskes Hanjin',
+  },
+  {
+    id: '#KT-0120',
+    nama: 'Nabila Putri',
+    dd: '01',
+    mm: 'Mei',
+    yyyy: '2000',
+    gender: 'P',
+    gejala: 'Nyeri tulang tumpul memberat malam hari.',
+    files: [{ name: 'scan-kt-0120.jpeg', size: '134.KB', url: '/sample-xray.jpeg' }],
+    aiResult: {
+      diagnosis: 'Kanker Tulang',
+      confidence: 90,
+      finding: 'Lesi osteolitik metafisis distal femur disertai reaksi periosteal (Kanker Tulang).',
+    },
+    status: 'menunggu',
+    createdAt: '2026-10-19',
+    faskes: 'Faskes Shinyu',
+  },
+  {
+    id: '#PN-DRAFT-01',
+    nama: 'Draft Pasien Rawat Jalan',
+    dd: '12',
+    mm: 'Agu',
+    yyyy: '1998',
+    gender: 'L',
+    gejala: 'Keluhan batuk berdahak 4 hari, riwayat asma.',
+    files: [{ name: 'draft-scan-01.jpeg', size: '110.KB', url: '/sample-xray.jpeg' }],
+    aiResult: {
+      diagnosis: 'Pneumonia',
+      confidence: 90,
+      finding: 'Corakan bronkovaskular meningkat pada kedua lapang paru.',
+    },
+    status: 'menunggu',
+    createdAt: '2026-10-20',
+    faskes: 'Faskes Shinyu',
+  },
 ]
 
 export function generateComprehensiveCases(): PatientRecord[] {
@@ -200,6 +431,16 @@ export function generateComprehensiveCases(): PatientRecord[] {
     })
   })
 
+  // Ensure all core queue cases are present and accurate
+  CORE_QUEUE_CASES.forEach((core) => {
+    const idx = result.findIndex((r) => r.id.toLowerCase() === core.id.toLowerCase())
+    if (idx >= 0) {
+      result[idx] = core
+    } else {
+      result.unshift(core)
+    }
+  })
+
   return result
 }
 
@@ -224,48 +465,68 @@ export const PneumoniaProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [cases, setCases] = useState<PatientRecord[]>(() => {
     try {
       const saved = localStorage.getItem('teleradiologi_cases')
+      let list: PatientRecord[] = []
       if (saved) {
         const parsed = JSON.parse(saved) as PatientRecord[]
-        if (Array.isArray(parsed) && parsed.length >= 50) {
-          const hasBukan = parsed.some((c) => c.aiResult?.diagnosis === 'Bukan Pneumonia')
-          if (!hasBukan) {
-            const updated = parsed.map((c) => {
-              if (c.id === '#PN-0126') {
-                return {
-                  ...c,
-                  status: 'menunggu' as const,
-                  gejala: 'Pemeriksaan radiologi rutin skrining kesehatan toraks. Tidak ada sesak napas maupun demam, SpO2 normal 99%.',
-                  aiResult: {
-                    diagnosis: 'Bukan Pneumonia',
-                    confidence: 93,
-                    finding: 'Corakan bronkovaskular dalam batas normal. Tidak tampak infiltrat, konsolidasi pneumonik, maupun efusi pleura. Cor dan pulmo normal (Bukan Pneumonia).',
-                  },
-                }
-              }
-              if (c.id === '#PN-0129') {
-                return {
-                  ...c,
-                  status: 'terverifikasi' as const,
-                  verificationResult: 'Tidak terdeteksi',
-                  aiResult: {
-                    diagnosis: 'Bukan Pneumonia',
-                    confidence: 95,
-                    finding: 'Jantung dan paru dalam batas normal. Sinus kostofrenikus lancar tajam, tidak ada tanda pneumonia aktif.',
-                  },
-                }
-              }
-              return c
-            })
-            localStorage.setItem('teleradiologi_cases', JSON.stringify(updated))
-            return updated
-          }
-          return parsed
+        if (Array.isArray(parsed) && parsed.length >= 20) {
+          list = parsed
         }
       }
+      if (list.length === 0) {
+        list = initialCases
+      }
+
+      // Automatic data sanitization & synchronization
+      const sanitized: PatientRecord[] = list.map((c): PatientRecord => {
+        const coreMatch = CORE_QUEUE_CASES.find((cq) => cq.id.toLowerCase() === c.id.toLowerCase())
+        if (coreMatch) {
+          return {
+            ...coreMatch,
+            status: c.status || coreMatch.status,
+            verificationResult: c.verificationResult || coreMatch.verificationResult,
+            verificationNotes: c.verificationNotes || coreMatch.verificationNotes,
+            verificationDate: c.verificationDate || coreMatch.verificationDate,
+            radiologist: c.radiologist || coreMatch.radiologist,
+          }
+        }
+
+        // For all other cases, enforce disease prefix integrity
+        const isBone = c.id.startsWith('#KT-')
+        const isBrain = c.id.startsWith('#TO-')
+        let diag = c.aiResult?.diagnosis || (isBone ? 'Kanker Tulang' : isBrain ? 'Tumor Otak' : 'Pneumonia')
+        let finding = c.aiResult?.finding || ''
+
+        if (isBone && diag.includes('Pneumonia')) {
+          diag = diag.includes('Bukan') ? 'Bukan Kanker Tulang' : 'Kanker Tulang'
+          finding = 'Lesi osteolitik metafisis distal femur disertai reaksi periosteal (Kanker Tulang).'
+        } else if (isBrain && diag.includes('Pneumonia')) {
+          diag = diag.includes('Bukan') ? 'Bukan Tumor Otak' : 'Tumor Otak'
+          finding = 'Massa ekstra-aksial lobus frontoparietal berbatas tegas dengan perifocal edema.'
+        }
+
+        return {
+          ...c,
+          aiResult: {
+            diagnosis: diag,
+            confidence: c.aiResult?.confidence || 90,
+            finding: finding || c.aiResult?.finding || 'Evaluasi radiologis komprehensif.',
+          },
+        }
+      })
+
+      // Ensure all CORE_QUEUE_CASES exist in sanitized list
+      CORE_QUEUE_CASES.forEach((coreCase) => {
+        const exists = sanitized.some((c) => c.id.toLowerCase() === coreCase.id.toLowerCase())
+        if (!exists) {
+          sanitized.unshift(coreCase)
+        }
+      })
+
+      localStorage.setItem('teleradiologi_cases', JSON.stringify(sanitized))
+      return sanitized
     } catch {
-      // fallback
+      return initialCases
     }
-    return initialCases
   })
 
   const [currentCase, setCurrentCase] = useState<PatientRecord>(() => {
@@ -404,18 +665,85 @@ export const PneumoniaProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     addToast('Draft berhasil dihapus.', 'info')
   }
 
-  const startAnalysis = async (): Promise<PatientRecord> => {
+  const startAnalysis = async (customAiResult?: PatientRecord['aiResult']): Promise<PatientRecord> => {
+    const isBone =
+      currentCase.id.startsWith('#KT-') ||
+      Boolean(
+        currentCase.gejala &&
+          (currentCase.gejala.toLowerCase().includes('tulang') ||
+            currentCase.gejala.toLowerCase().includes('osteolitik') ||
+            currentCase.gejala.toLowerCase().includes('femur') ||
+            currentCase.gejala.toLowerCase().includes('tibia'))
+      )
+    const isBrain =
+      currentCase.id.startsWith('#TO-') ||
+      Boolean(
+        currentCase.gejala &&
+          (currentCase.gejala.toLowerCase().includes('otak') ||
+            currentCase.gejala.toLowerCase().includes('kepala') ||
+            currentCase.gejala.toLowerCase().includes('kejang') ||
+            currentCase.gejala.toLowerCase().includes('neurologis'))
+      )
+    const isNeg =
+      currentCase.id === '#PN-0888' ||
+      Boolean(
+        currentCase.aiResult?.diagnosis?.toLowerCase().includes('bukan') ||
+          currentCase.gejala?.toLowerCase().includes('skrining') ||
+          currentCase.gejala?.toLowerCase().includes('normal')
+      )
+
+    let computedAi: { diagnosis: string; confidence: number; finding: string }
+    if (customAiResult) {
+      computedAi = customAiResult
+    } else if (isBone) {
+      computedAi = {
+        diagnosis: isNeg ? 'Bukan Kanker Tulang' : 'Kanker Tulang',
+        confidence: currentCase.aiResult?.confidence || 90,
+        finding: isNeg
+          ? 'Struktur korteks dan trabekula tulang intak. Tidak tampak lesi litik maupun reaksi periosteal (Bukan Kanker Tulang).'
+          : 'Lesi osteolitik metafisis distal femur disertai reaksi periosteal (Kanker Tulang).',
+      }
+    } else if (isBrain) {
+      computedAi = {
+        diagnosis: isNeg ? 'Bukan Tumor Otak' : 'Tumor Otak',
+        confidence: currentCase.aiResult?.confidence || 94,
+        finding: isNeg
+          ? 'Struktur parenkim serebri dan ventrikel dalam batas normal. Tidak tampak massa intra maupun ekstra aksial (Bukan Tumor Otak).'
+          : 'Massa ekstra-aksial lobus frontoparietal berbatas tegas dengan perifocal edema.',
+      }
+    } else if (isNeg) {
+      computedAi = {
+        diagnosis: 'Bukan Pneumonia',
+        confidence: currentCase.aiResult?.confidence || 93,
+        finding:
+          'Corakan bronkovaskular dalam batas normal. Tidak tampak infiltrat, konsolidasi pneumonik, maupun efusi pleura. Cor dan pulmo normal (Bukan Pneumonia).',
+      }
+    } else {
+      computedAi = {
+        diagnosis: 'Pneumonia',
+        confidence: currentCase.aiResult?.confidence || 90,
+        finding: 'Infiltrasi bercak opasitas pada lobus bawah paru kanan konsisten dengan gambaran pneumonia bakterial.',
+      }
+    }
+
+    const defaultPrefix = isBone ? 'KT' : isBrain ? 'TO' : 'PN'
+    const fallbackId = `#${defaultPrefix}-0${Math.floor(130 + Math.random() * 800)}`
+
     const prepared: PatientRecord = {
       ...currentCase,
-      id: currentCase.id || `#PN-0${Math.floor(130 + Math.random() * 800)}`,
-      nama: currentCase.nama || 'Gracella Uhuy',
+      id: currentCase.id || fallbackId,
+      nama: currentCase.nama || (isBone ? 'Nabila Putri' : isBrain ? 'Raka Pratama' : 'Gracella Uhuy'),
       dd: currentCase.dd || '01',
       mm: currentCase.mm || 'Mei',
       yyyy: currentCase.yyyy || '2000',
-      gender: currentCase.gender || 'P',
+      gender: currentCase.gender || (isBone ? 'P' : isBrain ? 'L' : 'P'),
       gejala:
         currentCase.gejala ||
-        'Pasien datang dengan keluhan sesak napas yang meningkat sejak [X] hari, disertai batuk berdahak kental dan demam naik-turun. Pada pemeriksaan fisik dada, ditemukan fremitus taktil meningkat pada lapang paru [kanan/kiri] serta suara ronkhi wet basah. SpO2: [X]%.',
+        (isBone
+          ? 'Nyeri tulang tumpul memberat malam hari.'
+          : isBrain
+          ? 'Nyeri kepala hebat kronis memberat di pagi hari, muntah proyektil, defisit neurologis fokal.'
+          : 'Pasien datang dengan keluhan sesak napas yang meningkat sejak [X] hari, disertai batuk berdahak kental dan demam naik-turun. Pada pemeriksaan fisik dada, ditemukan fremitus taktil meningkat pada lapang paru [kanan/kiri] serta suara ronkhi wet basah. SpO2: [X]%.'),
       files:
         currentCase.files.length > 0
           ? currentCase.files
@@ -424,12 +752,7 @@ export const PneumoniaProvider: React.FC<{ children: React.ReactNode }> = ({ chi
               { name: 'untitled-attachment02.jpeg', size: '128.KB', url: '/sample-xray.jpeg' },
             ],
       status: 'menunggu',
-      aiResult: {
-        diagnosis: 'Pneumonia',
-        confidence: 90,
-        finding:
-          'Infiltrasi bercak opasitas pada lobus bawah paru kanan konsisten dengan gambaran pneumonia bakterial.',
-      },
+      aiResult: computedAi,
     }
 
     setCurrentCase(prepared)

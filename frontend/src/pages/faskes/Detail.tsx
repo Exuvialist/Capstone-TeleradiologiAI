@@ -64,7 +64,13 @@ function ResultPanel({
 
   const doctorName = patientData?.radiologist || (isBone ? 'Dr. Nadia' : isBrain ? 'Dr. Arif' : 'Dr. Bernard Bear')
   const aiScore = patientData?.aiResult?.confidence || (isBone ? 94 : isBrain ? 92 : 90)
-  const aiDiagnosis = patientData?.aiResult?.diagnosis || currentModule.title
+  let rawDiag = patientData?.aiResult?.diagnosis || currentModule.title
+  if (isBone && rawDiag.includes('Pneumonia')) {
+    rawDiag = rawDiag.includes('Bukan') ? 'Bukan Kanker Tulang' : 'Kanker Tulang'
+  } else if (isBrain && rawDiag.includes('Pneumonia')) {
+    rawDiag = rawDiag.includes('Bukan') ? 'Bukan Tumor Otak' : 'Tumor Otak'
+  }
+  const aiDiagnosis = rawDiag
 
   const overlayTitle = isBone
     ? `Lesi Osteolitik Metafisis (${aiScore}%)`

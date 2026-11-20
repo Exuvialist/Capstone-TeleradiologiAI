@@ -292,17 +292,22 @@ export function DokterDashboard() {
       .filter((c) => c.status === 'menunggu' || c.status === 'proses')
       .slice(0, 3)
       .map((c) => {
-        const diag = c.aiResult?.diagnosis || 'Pneumonia'
+        const isBone = c.id.startsWith('#KT-')
+        const isBrain = c.id.startsWith('#TO-')
+        const defaultCat = isBone ? 'Kanker Tulang' : isBrain ? 'Tumor Otak' : 'Pneumonia'
+        let diag = c.aiResult?.diagnosis || defaultCat
+        if (isBone && diag.includes('Pneumonia')) {
+          diag = diag.includes('Bukan') ? 'Bukan Kanker Tulang' : 'Kanker Tulang'
+        } else if (isBrain && diag.includes('Pneumonia')) {
+          diag = diag.includes('Bukan') ? 'Bukan Tumor Otak' : 'Tumor Otak'
+        }
         const confVal = c.aiResult?.confidence || 90
-        const isBone = diag.includes('Kanker') || c.id.startsWith('#KT-')
-        const isBrain = diag.includes('Tumor') || c.id.startsWith('#TO-')
-        const cat = isBone ? 'Kanker Tulang' : isBrain ? 'Tumor Otak' : 'Pneumonia'
         const isNeg = diag.toLowerCase().includes('bukan') || diag.toLowerCase().includes('tidak')
-        const aiLabel = isNeg ? `Bukan ${cat}` : cat
+        const aiLabel = isNeg ? (defaultCat.startsWith('Bukan ') ? defaultCat : `Bukan ${defaultCat}`) : defaultCat
         const dStr = formatDisplayDate(c.createdAt)
         return {
           id: c.id,
-          jenis: cat,
+          jenis: defaultCat,
           faskes: c.faskes || 'Faskes Dohoon',
           tanggal: dStr,
           ai: `${aiLabel} | ${confVal}%`,

@@ -36,8 +36,16 @@ export function DokterRiwayat() {
     const liveVerified = cases
       .filter((c) => c.status === 'terverifikasi')
       .map((c) => {
-        const diag = c.aiResult?.diagnosis || 'Pneumonia'
-        const cat = diag.includes('Tumor') ? 'Tumor Otak' : diag.includes('Kanker') ? 'Kanker Tulang' : 'Pneumonia'
+        const isBone = c.id.startsWith('#KT-')
+        const isBrain = c.id.startsWith('#TO-')
+        const defaultCat = isBone ? 'Kanker Tulang' : isBrain ? 'Tumor Otak' : 'Pneumonia'
+        let diag = c.aiResult?.diagnosis || defaultCat
+        if (isBone && diag.includes('Pneumonia')) {
+          diag = diag.includes('Bukan') ? 'Bukan Kanker Tulang' : 'Kanker Tulang'
+        } else if (isBrain && diag.includes('Pneumonia')) {
+          diag = diag.includes('Bukan') ? 'Bukan Tumor Otak' : 'Tumor Otak'
+        }
+        const cat = isBone || diag.includes('Kanker') ? 'Kanker Tulang' : isBrain || diag.includes('Tumor') ? 'Tumor Otak' : 'Pneumonia'
         const dStr = formatDisplayDate(c.verificationDate || c.createdAt)
         const hStr = c.verificationResult || 'Terdeteksi'
         return {

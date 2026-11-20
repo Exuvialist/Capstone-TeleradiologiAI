@@ -202,7 +202,7 @@ export default function BuatPemeriksaan({ filled = false }: { filled?: boolean }
             finding: 'Infiltrasi bercak opasitas pada lobus bawah paru kanan konsisten dengan gambaran pneumonia.',
           }
 
-      const res = await startAnalysis()
+      const res = await startAnalysis(targetAiResult)
       setCurrentCase((prev) => ({
         ...prev,
         ...res,

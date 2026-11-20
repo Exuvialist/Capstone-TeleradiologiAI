@@ -22,6 +22,7 @@ const DEFAULT_QUEUE = [
   { id: '#KT-0130', jenis: 'Kanker Tulang', faskes: 'Faskes Dohoon', tanggal: '16/10/2026', ai: 'Kanker Tulang | 91%' },
   { id: '#TO-0131', jenis: 'Tumor Otak', faskes: 'Faskes Youngjae', tanggal: '15/10/2026', ai: 'Tumor Otak | 93%' },
   { id: '#PN-0132', jenis: 'Pneumonia', faskes: 'Faskes Hanjin', tanggal: '15/10/2026', ai: 'Pneumonia | 96%' },
+  { id: '#KT-0120', jenis: 'Kanker Tulang', faskes: 'Faskes Shinyu', tanggal: '19/10/2026', ai: 'Kanker Tulang | 90%' },
 ]
 
 export function DokterAntrean() {
@@ -38,27 +39,32 @@ export function DokterAntrean() {
     const livePending = cases
       .filter((c) => c.status === 'menunggu' || c.status === 'proses')
       .map((c) => {
-        const diag = c.aiResult?.diagnosis || 'Pneumonia'
+        const isBone = c.id.startsWith('#KT-')
+        const isBrain = c.id.startsWith('#TO-')
+        const defaultCat = isBone ? 'Kanker Tulang' : isBrain ? 'Tumor Otak' : 'Pneumonia'
+        let diag = c.aiResult?.diagnosis || defaultCat
+        if (isBone && diag.includes('Pneumonia')) {
+          diag = diag.includes('Bukan') ? 'Bukan Kanker Tulang' : 'Kanker Tulang'
+        } else if (isBrain && diag.includes('Pneumonia')) {
+          diag = diag.includes('Bukan') ? 'Bukan Tumor Otak' : 'Tumor Otak'
+        }
         const conf = c.aiResult?.confidence || 90
-        const isBone = diag.includes('Kanker') || c.id.startsWith('#KT-')
-        const isBrain = diag.includes('Tumor') || c.id.startsWith('#TO-')
-        const cat = isBone ? 'Kanker Tulang' : isBrain ? 'Tumor Otak' : 'Pneumonia'
         const isNeg = diag.toLowerCase().includes('bukan') || diag.toLowerCase().includes('tidak')
-        const aiLabel = isNeg ? `Bukan ${cat}` : cat
+        const aiLabel = isNeg ? (defaultCat.startsWith('Bukan ') ? defaultCat : `Bukan ${defaultCat}`) : defaultCat
         const dStr = formatDisplayDate(c.createdAt)
         return {
           id: c.id,
-          jenis: cat,
+          jenis: defaultCat,
           faskes: c.faskes || 'Faskes Shinyu',
           tanggal: dStr,
           ai: `${aiLabel} | ${conf}%`,
         }
       })
 
-    // Combine avoiding duplicate IDs
+    // Combine avoiding duplicate IDs - prioritize live cases
     const seen = new Set<string>()
     const combined = []
-    for (const item of [...DEFAULT_QUEUE, ...livePending]) {
+    for (const item of [...livePending, ...DEFAULT_QUEUE]) {
       if (!seen.has(item.id)) {
         seen.add(item.id)
         combined.push(item)

@@ -19,28 +19,107 @@ export function DokterVerifikasi() {
   const { cases, verifyCase, addToast } = usePneumonia()
 
   // Find case by id
+  const cleanId = (id || '').replace(/^#/, '').toLowerCase()
   const targetId = id ? (id.startsWith('#') ? id : `#${id}`) : '#PN-0123'
   const record = useMemo(() => {
-    return cases.find((c) => c.id.toLowerCase() === targetId.toLowerCase()) || cases[0] || {
-      id: '#PN-0123',
+    const found = cases.find((c) => c.id.replace(/^#/, '').toLowerCase() === cleanId)
+    if (found) {
+      // Ensure prefix-to-disease integrity
+      const isBone = found.id.startsWith('#KT-')
+      const isBrain = found.id.startsWith('#TO-')
+      let diag = found.aiResult?.diagnosis || (isBone ? 'Kanker Tulang' : isBrain ? 'Tumor Otak' : 'Pneumonia')
+      let finding = found.aiResult?.finding || ''
+
+      if (isBone && diag.includes('Pneumonia')) {
+        diag = diag.includes('Bukan') ? 'Bukan Kanker Tulang' : 'Kanker Tulang'
+        finding = 'Lesi osteolitik metafisis distal femur disertai reaksi periosteal (Kanker Tulang).'
+      } else if (isBrain && diag.includes('Pneumonia')) {
+        diag = diag.includes('Bukan') ? 'Bukan Tumor Otak' : 'Tumor Otak'
+        finding = 'Massa ekstra-aksial lobus frontoparietal berbatas tegas dengan perifocal edema.'
+      }
+
+      return {
+        ...found,
+        aiResult: {
+          diagnosis: diag,
+          confidence: found.aiResult?.confidence || 90,
+          finding: finding || found.aiResult?.finding || 'Evaluasi radiologis komprehensif.',
+        },
+      }
+    }
+
+    // Fallback if not directly found in cases
+    const isBone = targetId.startsWith('#KT-')
+    const isBrain = targetId.startsWith('#TO-')
+    if (isBone) {
+      return {
+        id: targetId,
+        nama: targetId.includes('0120') || targetId.includes('0124') ? 'Nabila Putri' : 'Pasien Kanker Tulang',
+        dd: '01',
+        mm: 'Mei',
+        yyyy: '2000',
+        gender: 'P' as const,
+        gejala: 'Nyeri tulang tumpul memberat malam hari.',
+        files: [{ name: 'scan-kt.jpeg', size: '134.KB', url: '/sample-xray.jpeg' }],
+        aiResult: {
+          diagnosis: 'Kanker Tulang',
+          confidence: 90,
+          finding: 'Lesi osteolitik metafisis distal femur disertai reaksi periosteal (Kanker Tulang).',
+        },
+        status: 'menunggu' as const,
+        createdAt: '2026-10-19',
+        faskes: 'Faskes Shinyu',
+      }
+    }
+    if (isBrain) {
+      return {
+        id: targetId,
+        nama: 'Raka Pratama',
+        dd: '17',
+        mm: 'Okt',
+        yyyy: '1997',
+        gender: 'L' as const,
+        gejala: 'Nyeri kepala hebat kronis memberat di pagi hari, disertai muntah proyektil, defisit neurologis fokal.',
+        files: [{ name: 'scan-to.jpeg', size: '134.KB', url: '/sample-xray.jpeg' }],
+        aiResult: {
+          diagnosis: 'Tumor Otak',
+          confidence: 94,
+          finding: 'Massa ekstra-aksial lobus frontoparietal berbatas tegas dengan perifocal edema.',
+        },
+        status: 'menunggu' as const,
+        createdAt: '2026-10-18',
+        faskes: 'Faskes Youngjae',
+      }
+    }
+    return {
+      id: targetId,
       nama: 'Gracella Uhuy',
       dd: '01',
       mm: 'Mei',
       yyyy: '2000',
       gender: 'P' as const,
       gejala: DEFAULT_SYMPTOM,
-      files: [{ name: 'scan-pn-01.jpeg', size: '134.KB', url: '/sample-xray.jpeg' }],
+      files: [{ name: 'scan-pn.jpeg', size: '134.KB', url: '/sample-xray.jpeg' }],
       aiResult: {
-        diagnosis: 'Pneumonia',
+        diagnosis: targetId === '#PN-0126' || targetId === '#PN-0129' ? 'Bukan Pneumonia' : 'Pneumonia',
         confidence: 90,
         finding: 'Infiltrasi bercak opasitas konsisten dengan pneumonia lobaris.',
       },
       status: 'menunggu' as const,
       createdAt: '2026-10-19',
+      faskes: 'Faskes Shinyu',
     }
-  }, [cases, targetId])
+  }, [cases, cleanId, targetId])
 
-  const jenis = record.aiResult?.diagnosis || 'Pneumonia'
+  const isBone = record.id.startsWith('#KT-')
+  const isBrain = record.id.startsWith('#TO-')
+  const defaultDiag = isBone ? 'Kanker Tulang' : isBrain ? 'Tumor Otak' : 'Pneumonia'
+  let jenis = record.aiResult?.diagnosis || defaultDiag
+  if (isBone && jenis.includes('Pneumonia')) {
+    jenis = jenis.includes('Bukan') ? 'Bukan Kanker Tulang' : 'Kanker Tulang'
+  } else if (isBrain && jenis.includes('Pneumonia')) {
+    jenis = jenis.includes('Bukan') ? 'Bukan Tumor Otak' : 'Tumor Otak'
+  }
   const conf = record.aiResult?.confidence || 90
 
   // Decision State
