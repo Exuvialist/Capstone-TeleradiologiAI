@@ -1,190 +1,197 @@
-import React, { useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Search,
   ChevronDown,
-  ChevronLeft,
   ChevronRight,
-  Clock,
-  CheckCircle2,
+  ArrowLeft,
   ArrowRight,
-  Sparkles,
 } from 'lucide-react'
 import { usePneumonia } from '../../context/PneumoniaContext'
-import type { PatientRecord } from '../../types/patient'
+import { formatDisplayDate } from '../../types/patient'
+
+// Baseline queue from dokter-radiologi.html
+const DEFAULT_QUEUE = [
+  { id: '#PN-0123', jenis: 'Pneumonia', faskes: 'Faskes Shinyu', tanggal: '19/10/2026', ai: 'Pneumonia | 90%' },
+  { id: '#KT-0124', jenis: 'Kanker Tulang', faskes: 'Faskes Dohoon', tanggal: '19/10/2026', ai: 'Kanker Tulang | 87%' },
+  { id: '#TO-0125', jenis: 'Tumor Otak', faskes: 'Faskes Youngjae', tanggal: '18/10/2026', ai: 'Tumor Otak | 94%' },
+  { id: '#PN-0126', jenis: 'Pneumonia', faskes: 'Faskes Hanjin', tanggal: '18/10/2026', ai: 'Pneumonia | 92%' },
+  { id: '#TO-0127', jenis: 'Tumor Otak', faskes: 'Faskes Jihoon', tanggal: '17/10/2026', ai: 'Tumor Otak | 89%' },
+  { id: '#KT-0128', jenis: 'Kanker Tulang', faskes: 'Faskes Kyungmin', tanggal: '17/10/2026', ai: 'Kanker Tulang | 95%' },
+  { id: '#PN-0129', jenis: 'Pneumonia', faskes: 'Faskes Shinyu', tanggal: '16/10/2026', ai: 'Pneumonia | 88%' },
+  { id: '#KT-0130', jenis: 'Kanker Tulang', faskes: 'Faskes Dohoon', tanggal: '16/10/2026', ai: 'Kanker Tulang | 91%' },
+  { id: '#TO-0131', jenis: 'Tumor Otak', faskes: 'Faskes Youngjae', tanggal: '15/10/2026', ai: 'Tumor Otak | 93%' },
+  { id: '#PN-0132', jenis: 'Pneumonia', faskes: 'Faskes Hanjin', tanggal: '15/10/2026', ai: 'Pneumonia | 96%' },
+]
 
 export function DokterAntrean() {
   const navigate = useNavigate()
   const { cases } = usePneumonia()
 
-  const [filterType, setFilterType] = useState<'Semua' | 'Pneumonia' | 'Kanker Tulang' | 'Tumor Otak'>('Semua')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [currentPage, setCurrentPage] = useState(1)
+  const [q, setQ] = useState('')
+  const [jenis, setJenis] = useState('')
+  const [tgl, setTgl] = useState('')
+  const [page, setPage] = useState(1)
 
-  // Fetch pending verification cases live from database
-  const pendingCases = useMemo(() => {
-    return cases.filter((c) => c.status === 'menunggu' || c.status === 'proses')
+  // Merge live pending cases with default queue
+  const allRows = useMemo(() => {
+    const livePending = cases
+      .filter((c) => c.status === 'menunggu' || c.status === 'proses')
+      .map((c) => {
+        const diag = c.aiResult?.diagnosis || 'Pneumonia'
+        const conf = c.aiResult?.confidence || 90
+        const cat = diag.includes('Tumor') ? 'Tumor Otak' : diag.includes('Kanker') ? 'Kanker Tulang' : 'Pneumonia'
+        const dStr = formatDisplayDate(c.createdAt)
+        return {
+          id: c.id,
+          jenis: cat,
+          faskes: c.faskes || 'Faskes Shinyu',
+          tanggal: dStr,
+          ai: `${cat} | ${conf}%`,
+        }
+      })
+
+    // Combine avoiding duplicate IDs
+    const seen = new Set<string>()
+    const combined = []
+    for (const item of [...DEFAULT_QUEUE, ...livePending]) {
+      if (!seen.has(item.id)) {
+        seen.add(item.id)
+        combined.push(item)
+      }
+    }
+    return combined
   }, [cases])
 
-  const filtered = useMemo(() => {
-    return pendingCases.filter((item) => {
-      const diag = item.aiResult?.diagnosis || ''
-      const cat = diag.includes('Tumor') ? 'Tumor Otak' : diag.includes('Kanker') ? 'Kanker Tulang' : 'Pneumonia'
-      const matchType = filterType === 'Semua' || cat === filterType
-      const matchQuery =
-        item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.nama.toLowerCase().includes(searchQuery.toLowerCase())
-      return matchType && matchQuery
+  // Distinct dates for select dropdown
+  const distinctDates = useMemo(() => {
+    return Array.from(new Set(allRows.map((r) => r.tanggal)))
+  }, [allRows])
+
+  // Filter rows
+  const filteredRows = useMemo(() => {
+    return allRows.filter((r) => {
+      const matchQ =
+        !q ||
+        r.id.toLowerCase().includes(q.toLowerCase()) ||
+        r.jenis.toLowerCase().includes(q.toLowerCase()) ||
+        r.faskes.toLowerCase().includes(q.toLowerCase()) ||
+        r.ai.toLowerCase().includes(q.toLowerCase())
+      const matchJenis = !jenis || r.jenis === jenis
+      const matchTgl = !tgl || r.tanggal === tgl
+      return matchQ && matchJenis && matchTgl
     })
-  }, [pendingCases, filterType, searchQuery])
+  }, [allRows, q, jenis, tgl])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      <h1 className="h-7" style={{ margin: 0, fontSize: 26 }}>
-        Antrean Verifikasi ({pendingCases.length} Kasus Menunggu)
-      </h1>
+    <div>
+      <h1 className="t18" style={{ margin: 0 }}>Antrean Verifikasi</h1>
+      <hr className="rule" style={{ margin: '8px 0 14px' }} />
 
-      <div style={{ borderBottom: '1px solid var(--neutral-300)', paddingBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          {/* Filter Pills */}
-          <div style={{ display: 'flex', gap: 8 }}>
-            {(['Semua', 'Pneumonia', 'Kanker Tulang', 'Tumor Otak'] as const).map((tab) => {
-              const active = filterType === tab
-              const count =
-                tab === 'Semua'
-                  ? pendingCases.length
-                  : pendingCases.filter((c) => (c.aiResult?.diagnosis || '').includes(tab)).length
+      {/* Filters */}
+      <div className="filters">
+        <label className="search">
+          <Search size={16} color="var(--neutral-400)" />
+          <input
+            id="lq"
+            placeholder="Search bar"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </label>
 
-              return (
-                <button
-                  key={tab}
-                  type="button"
-                  className={`btn ${active ? 'btn-neutral' : 'btn-outline'}`}
-                  style={{ fontSize: 13, padding: '6px 12px' }}
-                  onClick={() => setFilterType(tab)}
-                >
-                  {tab} ({count})
-                </button>
-              )
-            })}
-          </div>
+        <div className="sel">
+          <select
+            id="fj"
+            aria-label="Jenis Pemeriksaan"
+            value={jenis}
+            onChange={(e) => setJenis(e.target.value)}
+          >
+            <option value="">Jenis Pemeriksaan</option>
+            <option value="Pneumonia">Pneumonia</option>
+            <option value="Kanker Tulang">Kanker Tulang</option>
+            <option value="Tumor Otak">Tumor Otak</option>
+          </select>
+          <ChevronDown size={14} className="sel-icon" />
+        </div>
 
-          {/* Quick Search */}
-          <div className="input-search-box" style={{ width: 260, height: 36 }}>
-            <Search size={16} color="var(--neutral-400)" />
-            <input
-              type="text"
-              placeholder="Cari ID / Pasien / Faskes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+        <div className="sel">
+          <select
+            id="ft"
+            aria-label="Tanggal"
+            value={tgl}
+            onChange={(e) => setTgl(e.target.value)}
+          >
+            <option value="">Tanggal</option>
+            {distinctDates.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+          <ChevronDown size={14} className="sel-icon" />
         </div>
       </div>
 
-      {/* Main Table */}
-      <div className="card" style={{ padding: 18 }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table>
-            <thead>
-              <tr>
-                <th style={{ width: 160 }}>ID Rekam Medis</th>
-                <th style={{ width: 170 }}>Jenis Pemeriksaan</th>
-                <th style={{ width: 180 }}>Asal Faskes</th>
-                <th style={{ width: 160 }}>Tanggal Masuk</th>
-                <th>Confidence Score AI</th>
-                <th style={{ width: 80, textAlign: 'right' }}>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '36px 0', color: 'var(--neutral-400)' }}>
-                    Tidak ada antrean verifikasi untuk filter yang dipilih.
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((item) => {
-                  const diag = item.aiResult?.diagnosis || 'Pneumonia'
-                  const cat = diag.includes('Tumor') ? 'Tumor Otak' : diag.includes('Kanker') ? 'Kanker Tulang' : 'Pneumonia'
-
-                  return (
-                    <tr
-                      key={item.id}
-                      className="table-row-hover"
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => navigate(`/dokter-radiologi/verifikasi/${encodeURIComponent(item.id)}`)}
-                    >
-                      <td style={{ fontWeight: 600 }}>{item.id}</td>
-                      <td>
-                        <span
-                          style={{
-                            padding: '2px 8px',
-                            borderRadius: 4,
-                            fontSize: 12,
-                            fontWeight: 600,
-                            background:
-                              cat === 'Pneumonia'
-                                ? 'rgba(95, 92, 176, 0.12)'
-                                : cat === 'Kanker Tulang'
-                                ? 'rgba(88, 132, 187, 0.15)'
-                                : 'rgba(90, 187, 130, 0.15)',
-                            color:
-                              cat === 'Pneumonia'
-                                ? 'var(--quaternary-600)'
-                                : cat === 'Kanker Tulang'
-                                ? 'var(--primary-600)'
-                                : 'var(--tertiary-600)',
-                          }}
-                        >
-                          {cat}
-                        </span>
-                      </td>
-                      <td>Faskes Shinyu</td>
-                      <td>{item.createdAt ? item.createdAt.split('-').reverse().join('/') : '19/10/2026'}</td>
-                      <td style={{ fontWeight: 500 }}>
-                        {diag} | {item.aiResult?.confidence || 90}%
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          className="btn btn-outline"
-                          style={{ padding: '4px 8px', fontSize: 12 }}
-                          title="Periksa Kasus"
-                        >
-                          <span>Periksa</span>
-                          <ChevronRight size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
+      {/* Main Table Card */}
+      <div className="card" style={{ padding: '14px 16px' }}>
+        <div className="thead" style={{ fontSize: 13, paddingBottom: 10, marginBottom: 10 }}>
+          <span className="w150">ID Rekam Medis</span>
+          <span className="w150">Jenis Pemeriksaan</span>
+          <span className="w150">Asal Faskes</span>
+          <span className="w150">Tanggal Masuk</span>
+          <span className="w200">Confidence Score AI</span>
         </div>
 
-        {/* Pagination Bar */}
-        <div className="pager" style={{ marginTop: 20 }}>
-          <button
-            type="button"
-            className="btn btn-white"
-            style={{ padding: '6px 10px' }}
-            disabled={currentPage <= 1}
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-          >
-            <ArrowLeft size={16} />
-          </button>
-          <span style={{ fontSize: 13, padding: '0 8px' }}>Halaman {currentPage} dari 1</span>
-          <button type="button" className="btn btn-white" style={{ padding: '6px 10px' }} disabled>
-            <ArrowRight size={16} />
-          </button>
-        </div>
+        {filteredRows.length === 0 ? (
+          <div className="empty">Tidak ada data yang cocok.</div>
+        ) : (
+          filteredRows.map((r) => (
+            <div
+              key={r.id}
+              className="trow"
+              style={{ padding: '6px 4px', fontSize: 14 }}
+              onClick={() => navigate(`/dokter-radiologi/verifikasi/${r.id.replace('#', '')}`)}
+            >
+              <div className="cells">
+                <span className="w150" style={{ fontWeight: 700, color: 'var(--primary-600)' }}>{r.id}</span>
+                <span className="w150">{r.jenis}</span>
+                <span className="w150">{r.faskes}</span>
+                <span className="w150">{r.tanggal}</span>
+                <span className="w200">{r.ai}</span>
+              </div>
+              <ChevronRight size={16} className="ico" />
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Pager from html */}
+      <div className="pager" style={{ marginTop: 12 }}>
+        <button
+          type="button"
+          className="btn sq"
+          style={{ width: 32, height: 32, padding: 0 }}
+          aria-label="Sebelumnya"
+          onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+          disabled={page <= 1}
+        >
+          <ArrowLeft size={14} />
+        </button>
+        <span style={{ fontSize: 12 }}>{page}/10</span>
+        <button
+          type="button"
+          className="btn sq"
+          style={{ width: 32, height: 32, padding: 0 }}
+          aria-label="Berikutnya"
+          onClick={() => setPage((prev) => Math.min(10, prev + 1))}
+          disabled={page >= 10}
+        >
+          <ArrowRight size={14} />
+        </button>
       </div>
     </div>
   )
 }
-
-
 
 export default DokterAntrean

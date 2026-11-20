@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, Lock, User, ShieldCheck, Stethoscope, Building2, AlertCircle } from 'lucide-react'
+import { Eye, EyeOff, Lock, User, AlertCircle } from 'lucide-react'
 import { usePneumonia } from '../context/PneumoniaContext'
 
 export default function Login() {
@@ -37,17 +37,6 @@ export default function Login() {
         setErrorMsg(res.error || 'Kata sandi tidak valid.')
       }
     }, 300)
-  }
-
-  const fillPreset = (userType: 'faskes' | 'radiolog') => {
-    setErrorMsg('')
-    if (userType === 'faskes') {
-      setUsername('petugas_faskes3t')
-      setPassword('faskes123')
-    } else {
-      setUsername('dr.shinyu_radiolog')
-      setPassword('radiolog123')
-    }
   }
 
   return (
@@ -190,86 +179,6 @@ export default function Login() {
             {isLoading ? 'Memverifikasi Akses...' : 'Masuk ke Sistem'}
           </button>
         </form>
-
-        {/* Info & Fast Role Selection Hint */}
-        <div style={{ marginTop: 24, borderTop: '1px solid var(--neutral-200)', paddingTop: 18 }}>
-          <p
-            style={{
-              fontSize: 11,
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: 0.5,
-              color: 'var(--neutral-400)',
-              marginBottom: 10,
-              textAlign: 'center',
-            }}
-          >
-            Pilih Kredensial Peran Akun (Otomatis Diarahkan):
-          </p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {/* Preset Faskes 3T */}
-            <div
-              onClick={() => fillPreset('faskes')}
-              style={{
-                border: '1px solid var(--neutral-300)',
-                borderRadius: 8,
-                padding: '10px 8px',
-                cursor: 'pointer',
-                textAlign: 'center',
-                background: 'var(--primary-100)',
-                borderColor: 'var(--primary-300)',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
-                <Building2 size={16} color="var(--primary-600)" />
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary-600)' }}>Faskes 3T</span>
-              </div>
-              <p style={{ fontSize: 11, color: 'var(--neutral-1000)', margin: 0 }}>
-                Sandi: <code style={{ fontWeight: 600 }}>faskes123</code>
-              </p>
-            </div>
-
-            {/* Preset Dokter Radiologi */}
-            <div
-              onClick={() => fillPreset('radiolog')}
-              style={{
-                border: '1px solid var(--neutral-300)',
-                borderRadius: 8,
-                padding: '10px 8px',
-                cursor: 'pointer',
-                textAlign: 'center',
-                background: 'rgba(95, 92, 176, 0.08)',
-                borderColor: 'rgba(95, 92, 176, 0.3)',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 4 }}>
-                <Stethoscope size={16} color="var(--quaternary-600)" />
-                <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--quaternary-600)' }}>Radiolog</span>
-              </div>
-              <p style={{ fontSize: 11, color: 'var(--neutral-1000)', margin: 0 }}>
-                Sandi: <code style={{ fontWeight: 600 }}>radiolog123</code>
-              </p>
-            </div>
-          </div>
-
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 6,
-              marginTop: 14,
-              fontSize: 11,
-              color: 'var(--neutral-400)',
-            }}
-          >
-            <ShieldCheck size={14} color="var(--tertiary-600)" />
-            <span>Sistem Terenkripsi & Terpisah Berdasarkan Peran</span>
-          </div>
-        </div>
       </div>
     </div>
   )

@@ -49,8 +49,9 @@ a { color: inherit; text-decoration: none; }
 .crumbs .cur { color: var(--neutral-1000); font-weight: 500; }
 .search-btn { width: 305px; height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid var(--neutral-400); border-radius: 8px; background: #fff; color: var(--neutral-400); font-size: 14px; }
 .main { padding: 20px; max-width: 1140px; }
-.page-title { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-weight: 700; font-size: 18px; }
+.page-title { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-bottom: 14px; font-weight: 700; font-size: 18px; }
 .page-title .sq { background: var(--quaternary-600); }
+.t18 { font-size: 18px; line-height: 26px; font-weight: 700; }
 .tabrow { display: flex; align-items: center; gap: 8px; padding-bottom: 16px; border-bottom: 1px solid var(--neutral-300); margin-bottom: 24px; }
 .tabrow .spacer { flex: 1; }
 
@@ -160,3 +161,114 @@ tr.table-row-hover:hover td { background-color: rgba(231, 237, 245, 0.45); }
 @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slideDown { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes zoomIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+
+/* ========================================================
+   Dokter Radiologi Specific Styles Matching Prototype HTML
+   ======================================================== */
+.dash-grid { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+.chart-card { flex: 1; min-width: 600px; max-width: 100%; height: 495px; position: relative; padding: 0; overflow: hidden; }
+.stat-card { width: 240px; height: 495px; padding: 22px 18px; display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0; box-sizing: border-box; }
+.stat { display: flex; flex-direction: column; gap: 8px; text-align: left; width: 100%; border: none; background: none; padding: 0; cursor: pointer; color: inherit; }
+.stat .lbl { font-size: 16px; font-weight: 600; line-height: 22px; color: var(--neutral-1000); }
+.stat .num { display: flex; align-items: baseline; gap: 8px; }
+.stat .num b, .stat .num b * { font-size: 38px !important; line-height: 44px !important; font-weight: 700 !important; color: var(--neutral-1000); letter-spacing: -0.5px; }
+.stat .num > span { font-size: 15px; font-weight: 500; color: var(--neutral-1000); }
+.stat:hover .lbl { text-decoration: underline; }
+.hr { border-top: 1px solid var(--neutral-300); }
+
+.chart2 { display: flex; flex-direction: column; padding: 12px 11px 11px; }
+.ch-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ch-head .tot { display: flex; align-items: center; gap: 8px; }
+.ch-head .tot b { font-size: 26px; line-height: 39px; font-weight: 700; color: var(--neutral-1000); }
+.periods { display: flex; gap: 8px; }
+.periods .btn.on { background: var(--neutral-800); border-color: var(--neutral-800); color: #fff; }
+
+.ch-sub, .ch-foot { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; line-height: 18px; }
+.ch-sub { margin: 12px 0 4px; color: var(--neutral-400); }
+.ch-foot { margin-bottom: 10px; color: var(--neutral-400); }
+
+.ch-plot { position: relative; flex: 1; min-height: 0; margin: 10px 0 30px; }
+.gl2 { position: absolute; left: 36px; right: 0; height: 1px; background: var(--neutral-200); }
+.yl2 { position: absolute; left: 0; width: 28px; text-align: right; font-size: 12px; line-height: 18px; margin-bottom: -9px; color: var(--neutral-400); }
+.groups { position: absolute; left: 36px; right: 0; top: 0; bottom: 0; display: flex; align-items: flex-end; }
+.grp { flex: 1; min-width: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 2px; position: relative; padding: 0 2px; border-radius: 4px 4px 0 0; cursor: pointer; transition: background-color 0.15s ease; }
+.grp:hover { background: rgba(88, 132, 187, 0.1); }
+@keyframes grow {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.bar2 {
+  flex: 0 1 18px;
+  min-width: 2px;
+  border-radius: 3px 3px 0 0;
+  transform-origin: bottom;
+  animation: grow 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transition: height 0.35s ease;
+}
+.chart-bar-grow {
+  transform-origin: bottom;
+  animation: grow 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transition: height 0.35s ease, opacity 0.15s ease;
+}
+.xl2 { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 6px; font-size: 12px; line-height: 18px; color: var(--neutral-400); white-space: nowrap; }
+
+.legend2 { display: flex; gap: 24px; flex-wrap: wrap; font-size: 12px; line-height: 18px; margin-top: auto; }
+.legend2 i { display: inline-block; width: 16px; height: 16px; border-radius: 4px; margin-right: 6px; vertical-align: middle; }
+
+/* Popover & Date Range Chips */
+.datewrap { position: relative; display: flex; gap: 10px; align-items: center; }
+.pop { position: absolute; right: 0; top: calc(100% + 8px); width: 340px; max-width: 92vw; background: #fff; border: 1px solid var(--neutral-300); border-radius: 12px; padding: 12px; box-shadow: 0 12px 32px rgba(39, 39, 45, 0.14); z-index: 40; animation: zoomIn 0.16s cubic-bezier(0.16, 1, 0.3, 1); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.chips .btn { padding: 4px 10px; font-size: 12px; }
+.pf { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pf label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 700; }
+.pf input { border: 1px solid var(--neutral-400); border-radius: 8px; padding: 7px 8px; font-weight: 400; width: 100%; font-size: 12px; }
+.err { color: var(--red-100); font-size: 12px; line-height: 18px; min-height: 18px; margin-top: 6px; }
+.pa { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+
+/* Detail Page */
+.detail { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
+.detail .left { flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+.detail .right { width: 426px; max-width: 100%; display: flex; flex-direction: column; align-items: flex-end; gap: 18px; }
+.sub { border: 1px solid var(--neutral-300); border-radius: 12px; padding: 12px; margin-top: 4px; font-size: 13px; line-height: 20px; }
+.viewer { height: 240px; background: var(--neutral-200); border: 1px solid var(--neutral-300); border-radius: 8px; position: relative; margin-bottom: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.viewer .btn { position: absolute; right: 11px; top: 11px; }
+.row-between { display: flex; justify-content: space-between; }
+.row-between > div { display: flex; gap: 12px; }
+.dec { width: 426px; max-width: 100%; min-height: 435px; border: 1px solid var(--neutral-300); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 12px; margin-top: 6px; background: #fff; }
+.dec .info { border: 1px solid var(--neutral-300); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.dec .info div { display: flex; justify-content: space-between; align-items: center; }
+.verif { display: flex; gap: 8px; width: 300px; max-width: 100%; }
+.verif button { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s ease; }
+.accept { background: rgba(31, 193, 107, 0.1); border-color: #1fc16b; color: #0e7940; }
+.accept:hover, .accept.sel-on { background: rgba(31, 193, 107, 0.28); font-weight: 700; }
+.reject { background: rgba(251, 55, 72, 0.1); border-color: #fb3748; color: #d00416; }
+.reject:hover { background: rgba(251, 55, 72, 0.18); }
+.reject.sel-on { background: #d00416; border-color: #d00416; color: #fff; font-weight: 700; }
+
+/* Table Styling from Prototype */
+.thead, .trow { display: flex; gap: 18px; align-items: center; }
+.thead { font-weight: 700; padding-bottom: 12px; border-bottom: 1px solid var(--neutral-300); margin-bottom: 12px; font-size: 13px; color: var(--neutral-1000); }
+.trow { justify-content: space-between; padding: 8px 6px; border-radius: 6px; cursor: pointer; transition: background-color 0.15s ease; font-size: 13px; }
+.trow:hover { background: #f7f6f6; }
+.cells { display: flex; gap: 18px; align-items: center; }
+.cells > span { word-break: break-word; overflow-wrap: anywhere; white-space: normal; line-height: 1.4; }
+.w150 { width: 150px; flex: none; word-break: break-word; overflow-wrap: anywhere; }
+.w200 { width: 200px; flex: none; word-break: break-word; overflow-wrap: anywhere; }
+.rule { border: 0; border-top: 1px solid var(--neutral-300); margin: 10px 0 24px; }
+.empty { padding: 20px; text-align: center; color: var(--neutral-400); font-size: 13px; }
+.filters { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+.search { display: inline-flex; align-items: center; gap: 10px; height: 38px; padding: 0 12px; border: 1px solid var(--neutral-400); border-radius: 8px; background: #fff; color: var(--neutral-400); width: 280px; max-width: 100%; box-sizing: border-box; cursor: text; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+.search:focus-within { border-color: var(--primary-600); box-shadow: 0 0 0 2px rgba(47, 107, 181, 0.15); }
+.search svg { flex-shrink: 0; }
+.search input { border: none !important; outline: none !important; background: transparent !important; width: 100%; height: 100%; padding: 0 !important; margin: 0 !important; font-size: 14px; font-family: inherit; color: var(--neutral-1000); }
+.search input::placeholder { color: var(--neutral-400); }
+.sel { position: relative; display: inline-flex; align-items: center; }
+.sel select { appearance: none; -webkit-appearance: none; height: 38px; padding: 0 34px 0 12px; border: 1px solid var(--neutral-400); border-radius: 8px; background: #fff; cursor: pointer; font-size: 14px; font-family: inherit; color: var(--neutral-1000); box-sizing: border-box; outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+.sel select:focus { border-color: var(--primary-600); box-shadow: 0 0 0 2px rgba(47, 107, 181, 0.15); }
+.sel .sel-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--neutral-400); }

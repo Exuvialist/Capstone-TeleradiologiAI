@@ -1,283 +1,206 @@
-import React, { useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Search,
-  Calendar,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  Download,
-  FileText,
-  CheckCircle2,
-  XCircle,
-  Clock,
+  ArrowLeft,
+  ArrowRight,
 } from 'lucide-react'
 import { usePneumonia } from '../../context/PneumoniaContext'
-import type { PatientRecord } from '../../types/patient'
+import { formatDisplayDate } from '../../types/patient'
+
+// Baseline queue from dokter-radiologi.html
+const BASE_ROWS = [
+  { id: '#PN-0123', jenis: 'Pneumonia', faskes: 'Faskes Shinyu', tanggal: '19/10/2026', hasil: 'Tidak terdeteksi' },
+  { id: '#KT-0124', jenis: 'Kanker Tulang', faskes: 'Faskes Dohoon', tanggal: '19/10/2026', hasil: 'Terdeteksi' },
+  { id: '#TO-0125', jenis: 'Tumor Otak', faskes: 'Faskes Youngjae', tanggal: '18/10/2026', hasil: 'Tidak terdeteksi' },
+  { id: '#PN-0126', jenis: 'Pneumonia', faskes: 'Faskes Hanjin', tanggal: '18/10/2026', hasil: 'Terdeteksi' },
+  { id: '#TO-0127', jenis: 'Tumor Otak', faskes: 'Faskes Jihoon', tanggal: '17/10/2026', hasil: 'Terdeteksi' },
+  { id: '#KT-0128', jenis: 'Kanker Tulang', faskes: 'Faskes Kyungmin', tanggal: '17/10/2026', hasil: 'Tidak terdeteksi' },
+  { id: '#PN-0129', jenis: 'Pneumonia', faskes: 'Faskes Shinyu', tanggal: '16/10/2026', hasil: 'Tidak terdeteksi' },
+  { id: '#KT-0130', jenis: 'Kanker Tulang', faskes: 'Faskes Dohoon', tanggal: '16/10/2026', hasil: 'Terdeteksi' },
+  { id: '#TO-0131', jenis: 'Tumor Otak', faskes: 'Faskes Youngjae', tanggal: '15/10/2026', hasil: 'Terdeteksi' },
+  { id: '#PN-0132', jenis: 'Pneumonia', faskes: 'Faskes Hanjin', tanggal: '15/10/2026', hasil: 'Terdeteksi' },
+]
 
 export function DokterRiwayat() {
   const { cases } = usePneumonia()
 
-  const [filterType, setFilterType] = useState<'Semua' | 'Pneumonia' | 'Kanker Tulang' | 'Tumor Otak'>('Semua')
-  const [searchQuery, setSearchQuery] = useState('')
-  const [selectedRecord, setSelectedRecord] = useState<PatientRecord | null>(null)
+  const [q, setQ] = useState('')
+  const [jenis, setJenis] = useState('')
+  const [tgl, setTgl] = useState('')
+  const [hasil, setHasil] = useState('')
+  const [page, setPage] = useState(1)
 
-  // Fetch verified cases live from database
-  const verifiedCases = useMemo(() => {
-    return cases.filter((c) => c.status === 'terverifikasi')
+  // Merge live verified cases with base rows
+  const allRows = useMemo(() => {
+    const liveVerified = cases
+      .filter((c) => c.status === 'terverifikasi')
+      .map((c) => {
+        const diag = c.aiResult?.diagnosis || 'Pneumonia'
+        const cat = diag.includes('Tumor') ? 'Tumor Otak' : diag.includes('Kanker') ? 'Kanker Tulang' : 'Pneumonia'
+        const dStr = formatDisplayDate(c.verificationDate || c.createdAt)
+        const hStr = c.verificationResult || 'Terdeteksi'
+        return {
+          id: c.id,
+          jenis: cat,
+          hasil: hStr,
+          faskes: c.faskes || 'Faskes Shinyu',
+          tanggal: dStr,
+        }
+      })
+
+    const seen = new Set<string>()
+    const combined = []
+    for (const item of [...liveVerified, ...BASE_ROWS]) {
+      if (!seen.has(item.id)) {
+        seen.add(item.id)
+        combined.push(item)
+      }
+    }
+    return combined
   }, [cases])
 
-  const filtered = useMemo(() => {
-    return verifiedCases.filter((item) => {
-      const diag = item.aiResult?.diagnosis || ''
-      const cat = diag.includes('Tumor') ? 'Tumor Otak' : diag.includes('Kanker') ? 'Kanker Tulang' : 'Pneumonia'
-      const matchType = filterType === 'Semua' || cat === filterType
-      const matchQuery =
-        item.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        item.nama.toLowerCase().includes(searchQuery.toLowerCase())
-      return matchType && matchQuery
+  // Distinct dates for select dropdown
+  const distinctDates = useMemo(() => {
+    return Array.from(new Set(allRows.map((r) => r.tanggal)))
+  }, [allRows])
+
+  // Filtered rows
+  const filteredRows = useMemo(() => {
+    return allRows.filter((r) => {
+      const matchQ =
+        !q ||
+        r.id.toLowerCase().includes(q.toLowerCase()) ||
+        r.jenis.toLowerCase().includes(q.toLowerCase()) ||
+        r.hasil.toLowerCase().includes(q.toLowerCase()) ||
+        r.faskes.toLowerCase().includes(q.toLowerCase())
+      const matchJenis = !jenis || r.jenis === jenis
+      const matchTgl = !tgl || r.tanggal === tgl
+      const matchHasil = !hasil || r.hasil === hasil
+      return matchQ && matchJenis && matchTgl && matchHasil
     })
-  }, [verifiedCases, filterType, searchQuery])
+  }, [allRows, q, jenis, tgl, hasil])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      <h1 className="h-7" style={{ margin: 0, fontSize: 26 }}>
-        Riyawat Kasus Terverifikasi ({verifiedCases.length} Kasus Selesai)
-      </h1>
+    <div>
+      <h1 className="t18">Riwayat Kasus Terverifikasi</h1>
+      <hr className="rule" />
 
-      <div style={{ borderBottom: '1px solid var(--neutral-300)', paddingBottom: 12 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-          {/* Filter Pills */}
-          <div style={{ display: 'flex', gap: 8 }}>
-            {(['Semua', 'Pneumonia', 'Kanker Tulang', 'Tumor Otak'] as const).map((tab) => {
-              const active = filterType === tab
-              const count =
-                tab === 'Semua'
-                  ? verifiedCases.length
-                  : verifiedCases.filter((c) => (c.aiResult?.diagnosis || '').includes(tab)).length
+      {/* Filters */}
+      <div className="filters">
+        <label className="search">
+          <Search size={16} color="var(--neutral-400)" />
+          <input
+            id="lq"
+            placeholder="Search bar"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+        </label>
 
-              return (
-                <button
-                  key={tab}
-                  type="button"
-                  className={`btn ${active ? 'btn-neutral' : 'btn-outline'}`}
-                  style={{ fontSize: 13, padding: '6px 12px' }}
-                  onClick={() => setFilterType(tab)}
-                >
-                  {tab} ({count})
-                </button>
-              )
-            })}
-          </div>
+        <div className="sel">
+          <select
+            id="fj"
+            aria-label="Jenis Pemeriksaan"
+            value={jenis}
+            onChange={(e) => setJenis(e.target.value)}
+          >
+            <option value="">Jenis Pemeriksaan</option>
+            <option value="Pneumonia">Pneumonia</option>
+            <option value="Kanker Tulang">Kanker Tulang</option>
+            <option value="Tumor Otak">Tumor Otak</option>
+          </select>
+          <ChevronDown size={14} className="sel-icon" />
+        </div>
 
-          {/* Quick Search */}
-          <div className="input-search-box" style={{ width: 260, height: 36 }}>
-            <Search size={16} color="var(--neutral-400)" />
-            <input
-              type="text"
-              placeholder="Cari ID / Pasien / Faskes..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+        <div className="sel">
+          <select
+            id="ft"
+            aria-label="Tanggal"
+            value={tgl}
+            onChange={(e) => setTgl(e.target.value)}
+          >
+            <option value="">Tanggal</option>
+            {distinctDates.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+          <ChevronDown size={14} className="sel-icon" />
+        </div>
+
+        <div className="sel">
+          <select
+            id="fh"
+            aria-label="Hasil Verifikasi"
+            value={hasil}
+            onChange={(e) => setHasil(e.target.value)}
+          >
+            <option value="">Hasil Verifikasi</option>
+            <option value="Terdeteksi">Terdeteksi</option>
+            <option value="Tidak terdeteksi">Tidak terdeteksi</option>
+          </select>
+          <ChevronDown size={14} className="sel-icon" />
         </div>
       </div>
 
-      {/* Main Table matching Desktop-31 */}
-      <div className="card" style={{ padding: 18 }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table>
-            <thead>
-              <tr>
-                <th style={{ width: 150 }}>ID Rekam Medis</th>
-                <th style={{ width: 160 }}>Jenis Pemeriksaan</th>
-                <th style={{ width: 190 }}>Hasil Verifikasi</th>
-                <th style={{ width: 160 }}>Asal Faskes</th>
-                <th style={{ width: 160 }}>Tanggal Verifikasi</th>
-                <th style={{ width: 80, textAlign: 'right' }}>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={6} style={{ textAlign: 'center', padding: '36px 0', color: 'var(--neutral-400)' }}>
-                    Tidak ada riwayat kasus terverifikasi untuk filter yang dipilih.
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((item) => {
-                  const diag = item.aiResult?.diagnosis || 'Pneumonia'
-                  const cat = diag.includes('Tumor') ? 'Tumor Otak' : diag.includes('Kanker') ? 'Kanker Tulang' : 'Pneumonia'
-                  const hasil = item.verificationResult || 'Terdeteksi'
-                  const isNegative = hasil.toLowerCase().includes('bukan') || hasil.toLowerCase().includes('tidak')
-
-                  return (
-                    <tr
-                      key={item.id}
-                      className="table-row-hover"
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => setSelectedRecord(item)}
-                    >
-                      <td style={{ fontWeight: 600 }}>{item.id}</td>
-                      <td>
-                        <span
-                          style={{
-                            padding: '2px 8px',
-                            borderRadius: 4,
-                            fontSize: 12,
-                            fontWeight: 600,
-                            background:
-                              cat === 'Pneumonia'
-                                ? 'rgba(95, 92, 176, 0.12)'
-                                : cat === 'Kanker Tulang'
-                                ? 'rgba(88, 132, 187, 0.15)'
-                                : 'rgba(90, 187, 130, 0.15)',
-                            color:
-                              cat === 'Pneumonia'
-                                ? 'var(--quaternary-600)'
-                                : cat === 'Kanker Tulang'
-                                ? 'var(--primary-600)'
-                                : 'var(--tertiary-600)',
-                          }}
-                        >
-                          {cat}
-                        </span>
-                      </td>
-                      <td>
-                        <span
-                          style={{
-                            fontWeight: 600,
-                            color: isNegative ? '#0e7940' : '#d61b2d',
-                          }}
-                        >
-                          {hasil}
-                        </span>
-                      </td>
-                      <td>Faskes Shinyu</td>
-                      <td>{item.verificationDate || '19/10/2026'}</td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          className="btn btn-outline"
-                          style={{ padding: '4px 8px', fontSize: 12 }}
-                        >
-                          <span>Detail</span>
-                          <ChevronRight size={14} />
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
+      {/* Table Card matching html */}
+      <div className="card">
+        <div className="thead">
+          <span className="w150">ID Rekam Medis</span>
+          <span className="w150">Jenis Pemeriksaan</span>
+          <span className="w200">Hasil Verifikasi</span>
+          <span className="w150">Asal Faskes</span>
+          <span className="w150">Tanggal Verifikasi</span>
         </div>
 
-        {/* Pagination Bar */}
-        <div className="pager" style={{ marginTop: 20 }}>
-          <button type="button" className="btn btn-white" style={{ padding: '6px 10px' }} disabled>
-            <ArrowLeft size={16} />
-          </button>
-          <span style={{ fontSize: 13, padding: '0 8px' }}>Halaman 1 dari 1</span>
-          <button type="button" className="btn btn-white" style={{ padding: '6px 10px' }} disabled>
-            <ArrowRight size={16} />
-          </button>
-        </div>
+        {filteredRows.length === 0 ? (
+          <div className="empty">Tidak ada data yang cocok.</div>
+        ) : (
+          filteredRows.map((r) => {
+            const isPos = r.hasil.includes('Terdeteksi') && !r.hasil.includes('Tidak')
+            return (
+              <div key={r.id} className="trow" style={{ cursor: 'default' }}>
+                <div className="cells">
+                  <span className="w150" style={{ fontWeight: 700, color: 'var(--primary-600)' }}>{r.id}</span>
+                  <span className="w150">{r.jenis}</span>
+                  <span className="w200" style={{ color: isPos ? '#0e7940' : 'var(--neutral-700)', fontWeight: 500 }}>
+                    {r.hasil}
+                  </span>
+                  <span className="w150">{r.faskes}</span>
+                  <span className="w150">{r.tanggal}</span>
+                </div>
+              </div>
+            )
+          })
+        )}
       </div>
 
-      {/* Detail Record Drawer / Modal */}
-      {selectedRecord && (
-        <div className="modal-backdrop" onClick={() => setSelectedRecord(null)}>
-          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 520 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <FileText size={20} color="var(--primary-600)" />
-                <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>
-                  Detail Verifikasi {selectedRecord.id}
-                </h3>
-              </div>
-              <button
-                type="button"
-                className="btn btn-outline"
-                style={{ padding: 4 }}
-                onClick={() => setSelectedRecord(null)}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <span style={{ color: 'var(--neutral-400)', fontSize: 12 }}>Nama Pasien:</span>
-                  <p style={{ fontWeight: 600, margin: 0 }}>{selectedRecord.nama}</p>
-                </div>
-                <div>
-                  <span style={{ color: 'var(--neutral-400)', fontSize: 12 }}>Jenis Pemeriksaan:</span>
-                  <p style={{ fontWeight: 600, margin: 0 }}>{selectedRecord.aiResult?.diagnosis || 'Pneumonia'}</p>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <span style={{ color: 'var(--neutral-400)', fontSize: 12 }}>Asal Faskes:</span>
-                  <p style={{ margin: 0 }}>Faskes Shinyu</p>
-                </div>
-                <div>
-                  <span style={{ color: 'var(--neutral-400)', fontSize: 12 }}>Tanggal Verifikasi:</span>
-                  <p style={{ margin: 0 }}>{selectedRecord.verificationDate || '19/10/2026'}</p>
-                </div>
-              </div>
-
-              <div style={{ borderTop: '1px solid var(--neutral-200)', paddingTop: 10 }}>
-                <span style={{ color: 'var(--neutral-400)', fontSize: 12 }}>Hasil Verifikasi:</span>
-                <p style={{ fontWeight: 700, color: (selectedRecord.verificationResult || '').toLowerCase().includes('tidak') || (selectedRecord.verificationResult || '').toLowerCase().includes('bukan') ? '#0e7940' : '#d61b2d', margin: '2px 0 0 0' }}>
-                  {selectedRecord.verificationResult || 'Terdeteksi'}
-                </p>
-              </div>
-
-              <div>
-                <span style={{ color: 'var(--neutral-400)', fontSize: 12 }}>Catatan Radiolog ({selectedRecord.radiologist || 'Dr. Shinyu'}):</span>
-                <div
-                  style={{
-                    background: 'var(--primary-100)',
-                    border: '1px solid var(--primary-300)',
-                    borderRadius: 6,
-                    padding: '8px 10px',
-                    marginTop: 4,
-                    lineHeight: '19px',
-                  }}
-                >
-                  {selectedRecord.verificationNotes || 'Tidak ada catatan khusus.'}
-                </div>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
-              <button
-                type="button"
-                className="btn btn-outline"
-                onClick={() => setSelectedRecord(null)}
-              >
-                Tutup
-              </button>
-              <button
-                type="button"
-                className="btn btn-neutral"
-                onClick={() => {
-                  alert(`Mengunduh lembar hasil verifikasi resmi ${selectedRecord.id} (PDF)...`)
-                }}
-              >
-                <Download size={14} />
-                <span>Unduh Berkas PDF</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Pager matching html */}
+      <div className="pager">
+        <button
+          type="button"
+          className="btn sq"
+          aria-label="Sebelumnya"
+          onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+          disabled={page <= 1}
+        >
+          <ArrowLeft size={16} />
+        </button>
+        <span>{page}/10</span>
+        <button
+          type="button"
+          className="btn sq"
+          aria-label="Berikutnya"
+          onClick={() => setPage((prev) => Math.min(10, prev + 1))}
+          disabled={page >= 10}
+        >
+          <ArrowRight size={16} />
+        </button>
+      </div>
     </div>
   )
 }
-
-
 
 export default DokterRiwayat

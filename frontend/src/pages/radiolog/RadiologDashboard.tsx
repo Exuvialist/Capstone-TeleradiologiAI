@@ -1,827 +1,681 @@
-import React, { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Calendar,
   ChevronDown,
+  ChevronRight,
   Download,
-  Check,
-  CheckCircle2,
-  XCircle,
-  FileText,
-  Clock,
-  ArrowRight,
 } from 'lucide-react'
 import { usePneumonia } from '../../context/PneumoniaContext'
-import type { PatientRecord } from '../../types/patient'
+import { formatDisplayDate } from '../../types/patient'
+
+// Animated CountUp number component
+function CountUp({ to, duration = 500 }: { to: number; duration?: number }) {
+  const [count, setCount] = useState(to)
+  const prevRef = useRef(to)
+
+  useEffect(() => {
+    const from = prevRef.current
+    prevRef.current = to
+    if (from === to) {
+      setCount(to)
+      return
+    }
+
+    const start = performance.now()
+    let frameId: number
+
+    const tick = (now: number) => {
+      const elapsed = now - start
+      const progress = Math.min(1, elapsed / duration)
+      // Ease out cubic
+      const ease = 1 - Math.pow(1 - progress, 3)
+      setCount(Math.round(from + (to - from) * ease))
+      if (progress < 1) {
+        frameId = requestAnimationFrame(tick)
+      }
+    }
+
+    frameId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frameId)
+  }, [to, duration])
+
+  return <>{count.toLocaleString('id-ID')}</>
+}
+
+// Constants matching dokter-radiologi.html
+const MAX = '2026-10-19'
+const MIN = '2024-01-01'
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des']
+const CN = ['Tumor Otak', 'Kanker Tulang', 'Pneumonia']
+const CC = ['var(--tertiary-600)', 'var(--primary-600)', 'var(--quaternary-600)']
+
+const FIX: Record<string, [number, number, number]> = {
+  '2026-10-13': [3, 3, 5],
+  '2026-10-14': [4, 2, 6],
+  '2026-10-15': [2, 4, 4],
+  '2026-10-16': [5, 3, 7],
+  '2026-10-17': [4, 5, 6],
+  '2026-10-18': [6, 3, 8],
+  '2026-10-19': [6, 5, 9],
+}
+
+const PRESET: Record<string, [string, string]> = {
+  Harian: ['2026-10-13', MAX],
+  Bulanan: ['2025-11-01', MAX],
+  Tahunan: [MIN, MAX],
+}
+
+const PLBL: Record<string, string> = {
+  Harian: 'Harian (7 Hari)',
+  Bulanan: 'Bulanan (12 Bulan)',
+  Tahunan: 'Tahunan',
+}
+
+const RP: Record<string, [string, string]> = {
+  '7 hari terakhir': ['2026-10-13', MAX],
+  '30 hari terakhir': ['2026-09-20', MAX],
+  'Bulan ini': ['2026-10-01', MAX],
+  'Tahun ini': ['2026-01-01', MAX],
+  'Semua data': [MIN, MAX],
+}
+
+const U = (d: string) => Date.parse(d + 'T00:00:00Z')
+const ymd = (t: number) => new Date(t).toISOString().slice(0, 10)
+
+const hash = (x: string) => {
+  let h = 7
+  for (let i = 0; i < x.length; i++) {
+    h = ((h * 31) + x.charCodeAt(i)) >>> 0
+  }
+  return h
+}
+
+const dayVals = (d: string): [number, number, number] => {
+  if (FIX[d]) return FIX[d]
+  return [hash(d + '0') % 7, hash(d + '1') % 7, hash(d + '2') % 7]
+}
+
+const dmy = (d: string, y = false) => {
+  const [Y, M, D] = d.split('-')
+  return `${+D} ${MON[+M - 1]}${y ? ' ' + Y : ''}`
+}
+
+function rangeLabel(a: string, b: string) {
+  const A = a.split('-')
+  const B = b.split('-')
+  if (a === b) return dmy(a, true)
+  if (A[0] === B[0] && A[1] === B[1]) return `${+A[2]}–${dmy(b, true)}`
+  if (A[0] === B[0]) return `${dmy(a)} – ${dmy(b, true)}`
+  return `${dmy(a, true)} – ${dmy(b, true)}`
+}
+
+function computeStats(a: string, b: string) {
+  const days: string[] = []
+  for (let t = U(a); t <= U(b); t += 864e5) {
+    days.push(ymd(t))
+  }
+  const n = days.length
+  const key = n <= 31 ? (d: string) => d : n <= 400 ? (d: string) => d.slice(0, 7) : (d: string) => d.slice(0, 4)
+  const lab = (k: string) => (k.length === 10 ? dmy(k) : k.length === 7 ? MON[+k.slice(5) - 1] + ' ' + k.slice(2, 4) : k)
+
+  const g = new Map<string, [number, number, number]>()
+  const tot: [number, number, number] = [0, 0, 0]
+
+  days.forEach((d) => {
+    const k = key(d)
+    const v = dayVals(d)
+    if (!g.has(k)) g.set(k, [0, 0, 0])
+    const current = g.get(k)!
+    v.forEach((x, j) => {
+      current[j] += x
+      tot[j] += x
+    })
+  })
+
+  const last = dayVals(b)
+  return {
+    n,
+    buckets: Array.from(g.entries()).map(([k, v]) => ({ l: lab(k), v })),
+    tot,
+    total: tot[0] + tot[1] + tot[2],
+    lastTotal: last[0] + last[1] + last[2],
+  }
+}
 
 export function DokterDashboard() {
   const navigate = useNavigate()
   const { cases, addToast } = usePneumonia()
 
-  // Period mode: Harian, Bulanan, Tahunan
-  const [period, setPeriod] = useState<'harian' | 'bulanan' | 'tahunan'>('harian')
+  const [mode, setMode] = useState<string>('Harian')
+  const [range, setRange] = useState<[string, string]>(['2026-10-13', MAX])
+  const [showPop, setShowPop] = useState(false)
+  const [d1, setD1] = useState('2026-10-13')
+  const [d2, setD2] = useState(MAX)
+  const [dErr, setDErr] = useState('')
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null)
+  const [animKey, setAnimKey] = useState(0)
 
-  // Interactive Date Range Picker
-  const [showDatePicker, setShowDatePicker] = useState(false)
-  const [dateRangePreset, setDateRangePreset] = useState<string>('13-19-okt')
-  const [dateRangeLabel, setDateRangeLabel] = useState('13–19 Okt 2026')
-  const [customStartDate, setCustomStartDate] = useState('2026-10-13')
-  const [customEndDate, setCustomEndDate] = useState('2026-10-19')
+  const s = useMemo(() => computeStats(range[0], range[1]), [range])
+  const mx = useMemo(() => Math.max(1, ...s.buckets.flatMap((x) => x.v)), [s])
 
-  // Available Presets
-  const presets = [
-    { id: '13-19-okt', label: '13–19 Okt 2026 (Minggu Berjalan)', start: '2026-10-13', end: '2026-10-19' },
-    { id: '6-12-okt', label: '6–12 Okt 2026 (Minggu Lalu)', start: '2026-10-06', end: '2026-10-12' },
-    { id: 'okt-2026', label: '1–31 Okt 2026 (Bulan Ini)', start: '2026-10-01', end: '2026-10-31' },
-    { id: 'sep-2026', label: '1–30 Sep 2026 (Bulan Lalu)', start: '2026-09-01', end: '2026-09-30' },
-    { id: 'year-2026', label: 'Tahun 2026 (Sepanjang Tahun)', start: '2026-01-01', end: '2026-12-31' },
-  ]
+  // Memberikan ruang kepala (headroom ~45%) pada skala grafik agar bar tidak menjulang hingga batas atas,
+  // sehingga kotak notifikasi (tooltip) memiliki ruang bebas dan tidak menabrak tombol/ikon di atasnya.
+  const { top, step } = useMemo(() => {
+    const target = mx * 1.48
+    const candidateSteps = [1, 2, 5, 10, 20, 25, 30, 50, 100, 150, 200, 250, 500, 1000, 1500, 2000, 2500, 5000, 10000]
+    const chosenStep = candidateSteps.find((x) => target / x <= 5) || 5
+    const computedTop = Math.max(chosenStep * 3, Math.ceil(target / chosenStep) * chosenStep)
+    return { top: computedTop, step: chosenStep }
+  }, [mx])
 
-  const handleSelectPreset = (p: typeof presets[0]) => {
-    setDateRangePreset(p.id)
-    setDateRangeLabel(p.label.split(' (')[0])
-    setCustomStartDate(p.start)
-    setCustomEndDate(p.end)
-    setShowDatePicker(false)
-    addToast(`Rentang tanggal diubah ke: ${p.label}`, 'info')
-  }
+  const rl = useMemo(() => rangeLabel(range[0], range[1]), [range])
 
-  const handleApplyCustomDate = () => {
-    if (!customStartDate || !customEndDate) return
-    setDateRangePreset('custom')
-    const startStr = customStartDate.split('-').reverse().slice(0, 2).join('/')
-    const endStr = customEndDate.split('-').reverse().slice(0, 2).join('/')
-    setDateRangeLabel(`${startStr} – ${endStr} 2026`)
-    setShowDatePicker(false)
-    addToast(`Filter rentang tanggal kustom aktif: ${customStartDate} s/d ${customEndDate}`, 'info')
-  }
-
-  // Real-time Database calculations
-  const filteredCases = useMemo(() => {
+  // Real dataset metrics computed from cases filtered by date range
+  const rangeCases = useMemo(() => {
     return cases.filter((c) => {
-      const d = c.createdAt || '2026-10-19'
-      return d >= customStartDate && d <= customEndDate
+      const d = c.createdAt ? c.createdAt.slice(0, 10) : ''
+      return d >= range[0] && d <= range[1]
     })
-  }, [cases, customStartDate, customEndDate])
+  }, [cases, range])
 
-  // Real-time KPI numbers fetched from database
-  const totalPemeriksaan = filteredCases.length || 100
-  const pendingCases = useMemo(() => cases.filter((c) => c.status === 'menunggu' || c.status === 'proses'), [cases])
-  const verifiedCases = useMemo(() => cases.filter((c) => c.status === 'terverifikasi'), [cases])
-  const verifiedInPeriod = useMemo(() => filteredCases.filter((c) => c.status === 'terverifikasi'), [filteredCases])
+  // 1. Antrean Verifikasi (menunggu / proses)
+  const ant = useMemo(() => {
+    const pending = rangeCases.filter((c) => c.status === 'menunggu' || c.status === 'proses').length
+    if (pending > 0) return pending
+    const allPending = cases.filter((c) => c.status === 'menunggu' || c.status === 'proses').length
+    if (allPending > 0) return allPending
+    return Math.max(0, s.total - Math.round(s.total * 0.86))
+  }, [rangeCases, cases, s.total])
 
-  const avgConfidence = useMemo(() => {
-    if (filteredCases.length === 0) return 92
-    const totalConf = filteredCases.reduce((acc, c) => acc + (c.aiResult?.confidence || 90), 0)
-    return Math.round(totalConf / filteredCases.length)
-  }, [filteredCases])
+  // 2. Selesai Diverifikasi (terverifikasi)
+  const sel = useMemo(() => {
+    const verified = rangeCases.filter((c) => c.status === 'terverifikasi').length
+    if (verified > 0) return verified
+    return Math.round(s.total * 0.86)
+  }, [rangeCases, s.total])
 
-  // Real-time Disease category breakdown
-  const categoryCounts = useMemo(() => {
-    let pneumonia = 0
-    let kanker = 0
-    let tumor = 0
-    filteredCases.forEach((c) => {
-      const diag = c.aiResult?.diagnosis || ''
-      if (diag.includes('Pneumonia')) pneumonia++
-      else if (diag.includes('Kanker')) kanker++
-      else if (diag.includes('Tumor')) tumor++
-    })
-    // Fallback baseline if range has few items
-    if (pneumonia === 0 && kanker === 0 && tumor === 0) {
-      pneumonia = 45
-      kanker = 25
-      tumor = 30
+  // 3. Diverifikasi pada tanggal akhir range
+  const lst = useMemo(() => {
+    const verifiedOnEndDay = rangeCases.filter((c) => {
+      const d = c.createdAt ? c.createdAt.slice(0, 10) : ''
+      const vd = c.verificationDate || ''
+      return (d === range[1] || vd.includes(dmy(range[1]))) && c.status === 'terverifikasi'
+    }).length
+    if (verifiedOnEndDay > 0) return verifiedOnEndDay
+    return Math.round(s.lastTotal * 0.9)
+  }, [rangeCases, range, s.lastTotal])
+
+  // 4. Rata-rata Keyakinan AI
+  const conf = useMemo(() => {
+    const validScores = rangeCases
+      .map((c) => c.aiResult?.confidence)
+      .filter((v): v is number => typeof v === 'number' && v > 0)
+    if (validScores.length > 0) {
+      return Math.round(validScores.reduce((acc, val) => acc + val, 0) / validScores.length)
     }
-    return { pneumonia, kanker, tumor }
-  }, [filteredCases])
+    return 92
+  }, [rangeCases])
 
-  // Dynamic Chart Data Generator (Harian, Bulanan, Tahunan)
-  const chartData = useMemo(() => {
-    if (period === 'harian') {
-      // 7 Days of the active range
-      const days = [
-        { key: '2026-10-13', label: '13 Okt' },
-        { key: '2026-10-14', label: '14 Okt' },
-        { key: '2026-10-15', label: '15 Okt' },
-        { key: '2026-10-16', label: '16 Okt' },
-        { key: '2026-10-17', label: '17 Okt' },
-        { key: '2026-10-18', label: '18 Okt' },
-        { key: '2026-10-19', label: '19 Okt' },
-      ]
+  const big = useMemo(() => s.tot.indexOf(Math.max(...s.tot)), [s.tot])
+  const ls = useMemo(() => Math.ceil(s.buckets.length / 10), [s.buckets.length])
 
-      return days.map((d) => {
-        const dayCases = cases.filter((c) => c.createdAt === d.key)
-        let tumor = dayCases.filter((c) => c.aiResult?.diagnosis.includes('Tumor')).length
-        let kanker = dayCases.filter((c) => c.aiResult?.diagnosis.includes('Kanker')).length
-        let pneumonia = dayCases.filter((c) => c.aiResult?.diagnosis.includes('Pneumonia')).length
+  // Handle Preset selection
+  const handleSelectPreset = (pName: string) => {
+    const p = PRESET[pName]
+    setRange(p)
+    setMode(pName)
+    setD1(p[0])
+    setD2(p[1])
+    setShowPop(false)
+    setAnimKey((k) => k + 1)
+    addToast(`Menampilkan data ${PLBL[pName]}`, 'info')
+  }
 
-        // If newly loaded or empty, provide standard Figma calibrated baseline
-        if (tumor === 0 && kanker === 0 && pneumonia === 0) {
-          const fallbackMap: Record<string, [number, number, number]> = {
-            '13 Okt': [3, 3, 5],
-            '14 Okt': [4, 2, 6],
-            '15 Okt': [2, 4, 4],
-            '16 Okt': [5, 3, 7],
-            '17 Okt': [4, 5, 6],
-            '18 Okt': [6, 3, 8],
-            '19 Okt': [6, 5, 9],
-          }
-          const fb = fallbackMap[d.label] || [3, 3, 5]
-          tumor = fb[0]
-          kanker = fb[1]
-          pneumonia = fb[2]
-        }
+  const handleChipSelect = (chipKey: string) => {
+    const r = RP[chipKey]
+    setRange(r)
+    setMode('range')
+    setD1(r[0])
+    setD2(r[1])
+    setShowPop(false)
+    setAnimKey((k) => k + 1)
+    addToast(`Statistik menampilkan ${rangeLabel(r[0], r[1])}`, 'info')
+  }
 
-        return {
-          label: d.label,
-          tumor,
-          kanker,
-          pneumonia,
-          total: tumor + kanker + pneumonia,
-        }
-      })
+  const handleApplyCustom = () => {
+    if (!d1 || !d2) {
+      setDErr('Isi kedua tanggal.')
+      return
     }
-
-    if (period === 'bulanan') {
-      // 12 Months
-      const months = [
-        { key: '01', label: 'Jan' },
-        { key: '02', label: 'Feb' },
-        { key: '03', label: 'Mar' },
-        { key: '04', label: 'Apr' },
-        { key: '05', label: 'Mei' },
-        { key: '06', label: 'Jun' },
-        { key: '07', label: 'Jul' },
-        { key: '08', label: 'Agu' },
-        { key: '09', label: 'Sep' },
-        { key: '10', label: 'Okt' },
-        { key: '11', label: 'Nov' },
-        { key: '12', label: 'Des' },
-      ]
-
-      return months.map((m) => {
-        const monthCases = cases.filter((c) => (c.createdAt || '').startsWith(`2026-${m.key}`))
-        let tumor = monthCases.filter((c) => c.aiResult?.diagnosis.includes('Tumor')).length
-        let kanker = monthCases.filter((c) => c.aiResult?.diagnosis.includes('Kanker')).length
-        let pneumonia = monthCases.filter((c) => c.aiResult?.diagnosis.includes('Pneumonia')).length
-
-        // Monthly synthetic baseline if empty for earlier months
-        if (tumor === 0 && kanker === 0 && pneumonia === 0) {
-          tumor = 2 + (parseInt(m.key) % 4)
-          kanker = 1 + ((parseInt(m.key) * 2) % 4)
-          pneumonia = 3 + (parseInt(m.key) % 5)
-        }
-
-        return {
-          label: m.label,
-          tumor,
-          kanker,
-          pneumonia,
-          total: tumor + kanker + pneumonia,
-        }
-      })
+    if (d1 > d2) {
+      setDErr('Tanggal awal tidak boleh setelah tanggal akhir.')
+      return
     }
+    if (d1 < MIN || d2 > MAX) {
+      setDErr(`Data tersedia ${dmy(MIN, true)} – ${dmy(MAX, true)}.`)
+      return
+    }
+    setDErr('')
+    setRange([d1, d2])
+    setMode('range')
+    setShowPop(false)
+    setAnimKey((k) => k + 1)
+    addToast(`Statistik menampilkan ${rangeLabel(d1, d2)}`, 'info')
+  }
 
-    // Tahunan (Available Years)
-    const years = [
-      { key: '2024', label: '2024' },
-      { key: '2025', label: '2025' },
-      { key: '2026', label: '2026' },
-    ]
+  const handleDownloadCsv = () => {
+    const header = 'Periode,' + CN.join(',') + ',Total\n'
+    const rows = s.buckets.map((x) => `${x.l},${x.v.join(',')},${x.v.reduce((p, q) => p + q, 0)}`).join('\n')
+    const csvContent = 'data:text/csv;charset=utf-8,' + encodeURIComponent(header + rows)
+    const link = document.createElement('a')
+    link.setAttribute('href', csvContent)
+    link.setAttribute('download', `statistik-${range[0]}_${range[1]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    addToast('Data statistik berhasil diunduh (CSV)', 'success')
+  }
 
-    return years.map((y) => {
-      const yearCases = cases.filter((c) => (c.createdAt || '').startsWith(y.key))
-      let tumor = yearCases.filter((c) => c.aiResult?.diagnosis.includes('Tumor')).length
-      let kanker = yearCases.filter((c) => c.aiResult?.diagnosis.includes('Kanker')).length
-      let pneumonia = yearCases.filter((c) => c.aiResult?.diagnosis.includes('Pneumonia')).length
-
-      if (y.key === '2026') {
-        tumor = categoryCounts.tumor
-        kanker = categoryCounts.kanker
-        pneumonia = categoryCounts.pneumonia
-      } else if (tumor === 0 && kanker === 0 && pneumonia === 0) {
-        tumor = y.key === '2024' ? 18 : 24
-        kanker = y.key === '2024' ? 14 : 20
-        pneumonia = y.key === '2024' ? 28 : 36
-      }
-
-      return {
-        label: y.label,
-        tumor,
-        kanker,
-        pneumonia,
-        total: tumor + kanker + pneumonia,
-      }
-    })
-  }, [cases, period, categoryCounts])
-
-  // Calculate dynamic max value for proportional Y-scale
-  const maxY = useMemo(() => {
-    const highestVal = Math.max(10, ...chartData.map((d) => Math.max(d.tumor, d.kanker, d.pneumonia)))
-    // Round to clean ceiling
-    return Math.ceil(highestVal / 2) * 2
-  }, [chartData])
-
-  // Dynamic Y-axis ticks
+  // Y-axis ticks
   const yTicks = useMemo(() => {
-    const ticks = []
-    for (let i = 5; i >= 0; i--) {
-      ticks.push(Math.round((maxY / 5) * i))
+    const ticks: number[] = []
+    for (let k = 0; k <= top; k += step) {
+      ticks.push(k)
     }
     return ticks
-  }, [maxY])
+  }, [top, step])
+
+  // Sample urgent cases for bottom table (merged with live database) - COMPACT
+  const dashTableRows = useMemo(() => {
+    const livePending = cases
+      .filter((c) => c.status === 'menunggu' || c.status === 'proses')
+      .slice(0, 3)
+      .map((c) => {
+        const diag = c.aiResult?.diagnosis || 'Pneumonia'
+        const confVal = c.aiResult?.confidence || 90
+        const cat = diag.includes('Tumor') ? 'Tumor Otak' : diag.includes('Kanker') ? 'Kanker Tulang' : 'Pneumonia'
+        const dStr = formatDisplayDate(c.createdAt)
+        return {
+          id: c.id,
+          jenis: cat,
+          faskes: c.faskes || 'Faskes Dohoon',
+          tanggal: dStr,
+          ai: `${cat} | ${confVal}%`,
+        }
+      })
+    if (livePending.length >= 3) return livePending
+    return [
+      { id: '#PN-0123', jenis: 'Pneumonia', faskes: 'Faskes Dohoon', tanggal: '19/10/2026', ai: 'Pneumonia | 90%' },
+      { id: '#KT-0124', jenis: 'Kanker Tulang', faskes: 'Faskes Youngjae', tanggal: '18/10/2026', ai: 'Bukan Kanker Tulang | 92%' },
+      { id: '#TO-0125', jenis: 'Tumor Otak', faskes: 'Faskes Jihoon', tanggal: '17/10/2026', ai: 'Tumor Otak | 94%' },
+    ]
+  }, [cases])
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-      {/* Header Row */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h1 className="h-7" style={{ margin: 0, fontSize: 24 }}>
+    <div>
+      {/* Page Title & Interactive Date Picker */}
+      <div
+        className="page-title"
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          width: '100%',
+          marginBottom: 14,
+        }}
+      >
+        <h1
+          style={{
+            fontSize: 18,
+            lineHeight: '26px',
+            fontWeight: 700,
+            margin: 0,
+            color: 'var(--neutral-1000)',
+          }}
+        >
           Analitik Pemeriksaan
         </h1>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          {/* Interactive Date Range Popover */}
-          <div style={{ position: 'relative' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                fontWeight: 700,
-                fontSize: 14,
-                color: 'var(--neutral-1000)',
-                cursor: 'pointer',
-                background: '#fff',
-                padding: '6px 12px',
-                borderRadius: 8,
-                border: '1px solid var(--neutral-300)',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                transition: 'all 0.15s ease',
-              }}
-              onClick={() => setShowDatePicker((prev) => !prev)}
-            >
-              <Calendar size={16} color="var(--primary-600)" />
-              <span>{dateRangeLabel}</span>
-              <ChevronDown size={16} style={{ transform: showDatePicker ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-            </div>
-
-            {/* Dropdown Menu */}
-            {showDatePicker && (
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '100%',
-                  right: 0,
-                  marginTop: 6,
-                  width: 280,
-                  background: '#fff',
-                  border: '1px solid var(--neutral-300)',
-                  borderRadius: 12,
-                  boxShadow: '0 12px 32px rgba(0,0,0,0.12)',
-                  zIndex: 40,
-                  padding: 12,
-                  animation: 'zoomIn 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
-                }}
-              >
-                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--neutral-400)', textTransform: 'uppercase', marginBottom: 8 }}>
-                  Rentang Waktu Cepat
-                </p>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  {presets.map((p) => {
-                    const isSelected = dateRangePreset === p.id
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => handleSelectPreset(p)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '6px 10px',
-                          borderRadius: 6,
-                          fontSize: 12,
-                          textAlign: 'left',
-                          background: isSelected ? 'var(--primary-100)' : 'transparent',
-                          color: isSelected ? 'var(--primary-600)' : 'var(--neutral-1000)',
-                          fontWeight: isSelected ? 600 : 400,
-                          border: 'none',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        <span>{p.label}</span>
-                        {isSelected && <Check size={14} color="var(--primary-600)" />}
-                      </button>
-                    )
-                  })}
-                </div>
-
-                <div style={{ borderTop: '1px solid var(--neutral-200)', margin: '10px 0 8px' }} />
-
-                <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--neutral-400)', textTransform: 'uppercase', marginBottom: 6 }}>
-                  Pilih Tanggal Kustom
-                </p>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-                    <span style={{ width: 44, color: 'var(--neutral-400)' }}>Dari:</span>
-                    <input
-                      type="date"
-                      value={customStartDate}
-                      onChange={(e) => setCustomStartDate(e.target.value)}
-                      style={{ flex: 1, padding: '4px 6px', fontSize: 12, borderRadius: 6, border: '1px solid var(--neutral-300)' }}
-                    />
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
-                    <span style={{ width: 44, color: 'var(--neutral-400)' }}>Sampai:</span>
-                    <input
-                      type="date"
-                      value={customEndDate}
-                      onChange={(e) => setCustomEndDate(e.target.value)}
-                      style={{ flex: 1, padding: '4px 6px', fontSize: 12, borderRadius: 6, border: '1px solid var(--neutral-300)' }}
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    className="btn btn-neutral"
-                    style={{ fontSize: 12, padding: '6px', width: '100%', marginTop: 4 }}
-                    onClick={handleApplyCustomDate}
-                  >
-                    Terapkan Rentang
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+        <div className="datewrap" style={{ marginLeft: 'auto' }}>
+          <button
+            type="button"
+            className="btn datebtn"
+            id="dateBtn"
+            aria-haspopup="dialog"
+            aria-expanded={showPop}
+            onClick={() => {
+              setShowPop((prev) => !prev)
+              setDErr('')
+            }}
+          >
+            <Calendar size={18} />
+            <b id="dateLbl">{rl}</b>
+            <ChevronDown size={18} />
+          </button>
 
           <button
             type="button"
-            className="btn btn-outline"
-            style={{ padding: '6px 8px' }}
-            onClick={() => addToast(`Mengunduh laporan analitik rekam medis (${dateRangeLabel}) dalam format PDF/Excel...`, 'success')}
-            title="Unduh Laporan"
+            className="btn sq"
+            id="dl"
+            aria-label="Unduh data statistik"
+            onClick={handleDownloadCsv}
+            title="Unduh data statistik CSV"
           >
             <Download size={18} />
           </button>
+
+          {/* Popover Rentang Tanggal */}
+          {showPop && (
+            <div className="pop open" id="pop" role="dialog" aria-label="Pilih rentang tanggal">
+              <div className="chips">
+                {Object.keys(RP).map((k) => (
+                  <button
+                    key={k}
+                    type="button"
+                    className="btn"
+                    data-pre={k}
+                    onClick={() => handleChipSelect(k)}
+                  >
+                    {k}
+                  </button>
+                ))}
+              </div>
+
+              <div className="pf">
+                <label>
+                  Dari
+                  <input
+                    type="date"
+                    id="d1"
+                    min={MIN}
+                    max={MAX}
+                    value={d1}
+                    onChange={(e) => setD1(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Sampai
+                  <input
+                    type="date"
+                    id="d2"
+                    min={MIN}
+                    max={MAX}
+                    value={d2}
+                    onChange={(e) => setD2(e.target.value)}
+                  />
+                </label>
+              </div>
+
+              {dErr && <p className="err" id="derr" role="alert">{dErr}</p>}
+
+              <div className="pa">
+                <button
+                  type="button"
+                  className="btn"
+                  id="dreset"
+                  onClick={() => handleSelectPreset('Harian')}
+                >
+                  Atur ulang
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-neutral dark"
+                  id="dapply"
+                  onClick={handleApplyCustom}
+                >
+                  Terapkan
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Analytics Main Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 16, alignItems: 'stretch' }}>
-        {/* Left Card: Chart & Distribution */}
-        <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Card Top Controls */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-              <span style={{ fontSize: 14, color: 'var(--neutral-1000)' }}>Total Pemeriksaan</span>
-              <span style={{ fontSize: 28, fontWeight: 700, color: 'var(--neutral-1000)' }}>{totalPemeriksaan}</span>
+      {/* Main Dash Grid (Chart + Stat Card) */}
+      <div className="dash-grid">
+        {/* Left Chart Card */}
+        <div className="card chart-card chart2" id="chartCard">
+          <div className="ch-head">
+            <div className="tot">
+              <span>Total Pemeriksaan</span>
+              <b data-k="total"><CountUp to={s.total} /></b>
             </div>
-
-            <div style={{ display: 'flex', gap: 6 }}>
-              {(['harian', 'bulanan', 'tahunan'] as const).map((mode) => (
+            <div className="periods">
+              {Object.keys(PRESET).map((p) => (
                 <button
-                  key={mode}
+                  key={p}
                   type="button"
-                  className={`btn ${period === mode ? 'btn-neutral' : 'btn-outline'}`}
-                  style={{ fontSize: 13, padding: '4px 12px', textTransform: 'capitalize' }}
-                  onClick={() => setPeriod(mode)}
+                  className={`btn ${mode === p ? 'on' : ''}`}
+                  data-period={p}
+                  aria-pressed={mode === p}
+                  onClick={() => handleSelectPreset(p)}
                 >
-                  {mode === 'harian' ? 'Harian (7 Hari)' : mode === 'bulanan' ? 'Bulanan (12 Bulan)' : 'Tahunan'}
+                  {PLBL[p]}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Chart Header Subtitle */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--neutral-400)' }}>
-            <span>Jumlah pemeriksaan per {period === 'harian' ? 'hari' : period === 'bulanan' ? 'bulan' : 'tahun'}</span>
-            <span>Data Real-time Database · {dateRangeLabel}</span>
+          <div className="ch-sub">
+            <span>Jumlah pemeriksaan</span>
+            <span>Data database · {rl}</span>
           </div>
 
-          {/* DYNAMIC RESPONSIVE CHART CONTAINER */}
-          <div style={{ display: 'flex', flexDirection: 'column', marginTop: 10 }}>
-            {/* 1. PLOT AREA (Bars rise upwards from bottom) */}
-            <div
-              style={{
-                position: 'relative',
-                height: 220,
-                width: '100%',
-              }}
-            >
-              {/* Horizontal Gridlines & Y-Axis Scale */}
-              {yTicks.map((val) => {
-                const bottomPercent = maxY > 0 ? (val / maxY) * 90 : 0
+          {/* Plot Area */}
+          <div className="ch-plot">
+            {/* Gridlines and Y labels */}
+            {yTicks.map((val) => {
+              const bottomPercent = top > 0 ? (val / top) * 100 : 0
+              return (
+                <div key={val}>
+                  <div className="gl2" style={{ bottom: `${bottomPercent}%` }} />
+                  <div className="yl2" style={{ bottom: `${bottomPercent}%` }}>{val}</div>
+                </div>
+              )
+            })}
+
+            {/* Groups of Bars with grow animation */}
+            <div className="groups" key={`anim-${animKey}`}>
+              {s.buckets.map((x, i) => {
+                const isHovered = hoveredIdx === i
+                const maxValInGrp = Math.max(...x.v)
+                const barTopPct = top > 0 ? (maxValInGrp / top) * 100 : 0
+                // Posisikan kotak notifikasi pas di atas batang tertinggi grup, dengan batas aman maksimal 62%
+                const tooltipBottomPct = Math.min(Math.max(barTopPct, 12), 62)
+                const isRight = i >= s.buckets.length - 2
+                const isLeft = i <= 1
+
                 return (
-                  <React.Fragment key={val}>
-                    <span
-                      style={{
-                        position: 'absolute',
-                        left: 0,
-                        bottom: `calc(${bottomPercent}% - 6px)`,
-                        fontSize: 12,
-                        color: 'var(--neutral-400)',
-                        width: 32,
-                        textAlign: 'right',
-                        userSelect: 'none',
-                      }}
-                    >
-                      {val}
-                    </span>
-                    <div
-                      style={{
-                        position: 'absolute',
-                        left: 44,
-                        right: 0,
-                        bottom: `${bottomPercent}%`,
-                        borderBottom: '1px solid var(--neutral-200)',
-                        zIndex: 1,
-                      }}
-                    />
-                  </React.Fragment>
+                  <div
+                    key={x.l + i}
+                    className="grp"
+                    data-i={i}
+                    onMouseEnter={() => setHoveredIdx(i)}
+                    onMouseLeave={() => setHoveredIdx(null)}
+                  >
+                    {/* Hover tooltip */}
+                    {isHovered && (
+                      <div
+                        style={{
+                          position: 'absolute',
+                          bottom: `${tooltipBottomPct}%`,
+                          marginBottom: 10,
+                          ...(isRight
+                            ? { right: 0 }
+                            : isLeft
+                            ? { left: 0 }
+                            : { left: '50%', transform: 'translateX(-50%)' }),
+                          background: 'var(--neutral-800)',
+                          color: '#fff',
+                          borderRadius: 8,
+                          padding: '8px 10px',
+                          fontSize: 12,
+                          lineHeight: '18px',
+                          minWidth: 150,
+                          zIndex: 30,
+                          pointerEvents: 'none',
+                          boxShadow: '0 6px 16px rgba(0,0,0,0.25)',
+                          whiteSpace: 'nowrap',
+                          animation: 'fadeIn 0.15s ease',
+                        }}
+                      >
+                        <b style={{ display: 'block', marginBottom: 4 }}>{x.l}</b>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <i style={{ width: 8, height: 8, borderRadius: 2, background: CC[0], display: 'inline-block' }} />
+                          <span>{CN[0]}</span>
+                          <span style={{ marginLeft: 'auto', paddingLeft: 12, fontWeight: 700 }}>{x.v[0]}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <i style={{ width: 8, height: 8, borderRadius: 2, background: CC[1], display: 'inline-block' }} />
+                          <span>{CN[1]}</span>
+                          <span style={{ marginLeft: 'auto', paddingLeft: 12, fontWeight: 700 }}>{x.v[1]}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <i style={{ width: 8, height: 8, borderRadius: 2, background: CC[2], display: 'inline-block' }} />
+                          <span>{CN[2]}</span>
+                          <span style={{ marginLeft: 'auto', paddingLeft: 12, fontWeight: 700 }}>{x.v[2]}</span>
+                        </div>
+                        <div style={{ borderTop: '1px solid rgba(255,255,255,0.25)', marginTop: 4, paddingTop: 4, display: 'flex', justifyContent: 'space-between', fontWeight: 700 }}>
+                          <span>Total</span>
+                          <span>{x.v[0] + x.v[1] + x.v[2]}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Bars with grow animation & staggered delay */}
+                    {x.v.map((v, j) => (
+                      <i
+                        key={j}
+                        className="bar2"
+                        style={{
+                          height: `${top > 0 ? (v / top) * 100 : 0}%`,
+                          background: CC[j],
+                          animationDelay: `${i * 25 + j * 35}ms`,
+                        }}
+                      />
+                    ))}
+
+                    {/* X-axis label */}
+                    {(i % ls === 0 || i === s.buckets.length - 1) && (
+                      <span className="xl2">{x.l}</span>
+                    )}
+                  </div>
                 )
               })}
-
-              {/* Responsive Bar Groups Container */}
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: '0 0 0 44px',
-                  display: 'flex',
-                  alignItems: 'flex-end',
-                  zIndex: 2,
-                }}
-              >
-                {chartData.map((item, idx) => {
-                  const maxPlotH = 198
-                  const hTumor = maxY > 0 ? Math.max(item.tumor > 0 ? 4 : 0, (item.tumor / maxY) * maxPlotH) : 0
-                  const hKanker = maxY > 0 ? Math.max(item.kanker > 0 ? 4 : 0, (item.kanker / maxY) * maxPlotH) : 0
-                  const hPneumonia = maxY > 0 ? Math.max(item.pneumonia > 0 ? 4 : 0, (item.pneumonia / maxY) * maxPlotH) : 0
-
-                  // Auto-adjusting bar widths based on number of columns
-                  const barWidth = period === 'harian' ? 14 : period === 'bulanan' ? 8 : 24
-                  const barGap = period === 'harian' ? 3 : period === 'bulanan' ? 2 : 4
-
-                  return (
-                    <div
-                      key={item.label}
-                      style={{
-                        flex: 1,
-                        height: '100%',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'flex-end',
-                        position: 'relative',
-                        padding: '0 2px',
-                      }}
-                      onMouseEnter={() => setHoveredIdx(idx)}
-                      onMouseLeave={() => setHoveredIdx(null)}
-                    >
-                      {/* Interactive Tooltip on hover */}
-                      {hoveredIdx === idx && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            bottom: Math.max(hTumor, hKanker, hPneumonia) + 12,
-                            background: 'var(--neutral-800)',
-                            color: '#fff',
-                            borderRadius: 6,
-                            padding: '6px 10px',
-                            fontSize: 11,
-                            whiteSpace: 'nowrap',
-                            zIndex: 20,
-                            boxShadow: '0 6px 16px rgba(0,0,0,0.2)',
-                            textAlign: 'center',
-                            pointerEvents: 'none',
-                          }}
-                        >
-                          <p style={{ fontWeight: 700, marginBottom: 2 }}>{item.label}</p>
-                          <p style={{ color: '#8de4aa' }}>Tumor Otak: {item.tumor}</p>
-                          <p style={{ color: '#9ec2ec' }}>Kanker Tulang: {item.kanker}</p>
-                          <p style={{ color: '#c4c1f0' }}>Pneumonia: {item.pneumonia}</p>
-                          <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)', marginTop: 4, paddingTop: 2, fontWeight: 700 }}>
-                            Total: {item.total}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Grouped Bar Columns standing on the 0 line */}
-                      <div style={{ display: 'flex', alignItems: 'flex-end', gap: barGap }}>
-                        {/* Tumor Otak Bar (Green) */}
-                        <div
-                          style={{
-                            width: barWidth,
-                            height: hTumor,
-                            background: 'var(--tertiary-600)',
-                            borderTopLeftRadius: 3,
-                            borderTopRightRadius: 3,
-                            transition: 'height 0.35s ease',
-                          }}
-                          title={`Tumor Otak: ${item.tumor}`}
-                        />
-                        {/* Kanker Tulang Bar (Blue) */}
-                        <div
-                          style={{
-                            width: barWidth,
-                            height: hKanker,
-                            background: 'var(--primary-600)',
-                            borderTopLeftRadius: 3,
-                            borderTopRightRadius: 3,
-                            transition: 'height 0.35s ease',
-                          }}
-                          title={`Kanker Tulang: ${item.kanker}`}
-                        />
-                        {/* Pneumonia Bar (Purple) */}
-                        <div
-                          style={{
-                            width: barWidth,
-                            height: hPneumonia,
-                            background: 'var(--quaternary-600)',
-                            borderTopLeftRadius: 3,
-                            borderTopRightRadius: 3,
-                            transition: 'height 0.35s ease',
-                          }}
-                          title={`Pneumonia: ${item.pneumonia}`}
-                        />
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* 2. THE 0 LINE (BASELINE) */}
-            <div
-              style={{
-                height: 2,
-                background: 'var(--neutral-400)',
-                marginLeft: 44,
-                width: 'calc(100% - 44px)',
-                zIndex: 3,
-              }}
-            />
-
-            {/* 3. X-AXIS LABELS (STRICTLY LOCATED BELOW THE 0 LINE) */}
-            <div
-              style={{
-                display: 'flex',
-                marginLeft: 44,
-                width: 'calc(100% - 44px)',
-                paddingTop: 8,
-              }}
-            >
-              {chartData.map((item) => (
-                <div
-                  key={item.label}
-                  style={{
-                    flex: 1,
-                    textAlign: 'center',
-                    fontSize: 12,
-                    color: 'var(--neutral-1000)',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {item.label}
-                </div>
-              ))}
             </div>
           </div>
 
-          {/* Chart Bottom Summaries & Legend */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 6 }}>
-            <span style={{ fontSize: 12, color: 'var(--neutral-400)' }}>
-              {totalPemeriksaan} pemeriksaan tercatat dalam database
-            </span>
-            <span style={{ fontSize: 12, color: 'var(--neutral-400)' }}>
-              Pneumonia terbanyak: {categoryCounts.pneumonia} pemeriksaan
-            </span>
+          <div className="ch-foot">
+            <span><CountUp to={s.total} /> pemeriksaan dalam {s.n} hari</span>
+            <span>{CN[big]} terbanyak: <CountUp to={s.tot[big]} /> pemeriksaan</span>
           </div>
 
-          <div style={{ display: 'flex', gap: 24, alignItems: 'center', marginTop: 4 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-              <div style={{ width: 14, height: 14, borderRadius: 4, background: 'var(--tertiary-600)' }} />
-              <span>Tumor Otak · {categoryCounts.tumor}</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-              <div style={{ width: 14, height: 14, borderRadius: 4, background: 'var(--primary-600)' }} />
-              <span>Kanker Tulang · {categoryCounts.kanker}</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
-              <div style={{ width: 14, height: 14, borderRadius: 4, background: 'var(--quaternary-600)' }} />
-              <span>Pneumonia · {categoryCounts.pneumonia}</span>
-            </div>
+          <div className="legend2">
+            {CN.map((n, i) => (
+              <span key={n}>
+                <i style={{ background: CC[i] }} />
+                {n} · <CountUp to={s.tot[i]} />
+              </span>
+            ))}
           </div>
         </div>
 
-        {/* Right Card: Full Balanced Ringkasan Data (Zero Empty Space) */}
-        <div
-          className="card"
-          style={{
-            padding: 18,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'space-between',
-            gap: 12,
-            minHeight: 460,
-          }}
-        >
-          {/* 1. Antrean Verifikasi (Live Database) */}
-          <div
+        {/* Right Stat Card - Narrow Box (240px) with Large Numbers */}
+        <div className="card stat-card" id="statCard">
+          {/* Antrean Verifikasi */}
+          <button
+            type="button"
+            className="stat"
             onClick={() => navigate('/dokter-radiologi/antrean')}
-            style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 2 }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 14, color: 'var(--neutral-1000)' }}>Antrean Verifikasi</span>
-              <span style={{ fontSize: 11, padding: '2px 6px', background: 'rgba(95, 92, 176, 0.1)', color: 'var(--quaternary-600)', borderRadius: 4, fontWeight: 600 }}>
-                Menunggu
-              </span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-              <span style={{ fontSize: 32, fontWeight: 700, color: 'var(--neutral-1000)' }}>{pendingCases.length}</span>
-              <span style={{ fontSize: 14, color: 'var(--neutral-1000)' }}>Kasus</span>
-            </div>
-          </div>
+            <span className="lbl">Antrean Verifikasi</span>
+            <span className="num" style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <b style={{ fontSize: 38, lineHeight: '44px', fontWeight: 700, color: 'var(--neutral-1000)', letterSpacing: -0.5 }}>
+                <CountUp to={ant} />
+              </b>
+              <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--neutral-1000)' }}>Kasus</span>
+            </span>
+          </button>
 
-          <div style={{ borderBottom: '1px solid var(--neutral-300)' }} />
+          <div className="hr" />
 
-          {/* 2. Selesai Diverifikasi (Live Database) */}
-          <div
+          {/* Selesai Diverifikasi */}
+          <button
+            type="button"
+            className="stat"
             onClick={() => navigate('/dokter-radiologi/riwayat')}
-            style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 2 }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 14, color: 'var(--neutral-1000)' }}>Selesai Diverifikasi</span>
-              <span style={{ fontSize: 11, padding: '2px 6px', background: 'rgba(90, 187, 130, 0.12)', color: '#0e7940', borderRadius: 4, fontWeight: 600 }}>
-                Arsip
-              </span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-              <span style={{ fontSize: 32, fontWeight: 700, color: 'var(--neutral-1000)' }}>{verifiedCases.length}</span>
-              <span style={{ fontSize: 14, color: 'var(--neutral-1000)' }}>Kasus</span>
-            </div>
-          </div>
+            <span className="lbl">Selesai Diverifikasi</span>
+            <span className="num" style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <b style={{ fontSize: 38, lineHeight: '44px', fontWeight: 700, color: 'var(--neutral-1000)', letterSpacing: -0.5 }}>
+                <CountUp to={sel} />
+              </b>
+              <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--neutral-1000)' }}>Kasus</span>
+            </span>
+          </button>
 
-          <div style={{ borderBottom: '1px solid var(--neutral-300)' }} />
+          <div className="hr" />
 
-          {/* 3. Diverifikasi pada Rentang Ini */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ fontSize: 14, color: 'var(--neutral-1000)' }}>Diverifikasi ({dateRangeLabel})</span>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-              <span style={{ fontSize: 32, fontWeight: 700, color: 'var(--neutral-1000)' }}>{verifiedInPeriod.length || 18}</span>
-              <span style={{ fontSize: 14, color: 'var(--neutral-1000)' }}>Kasus</span>
-            </div>
-          </div>
-
-          <div style={{ borderBottom: '1px solid var(--neutral-300)' }} />
-
-          {/* 4. Rata-rata Keyakinan AI */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <span style={{ fontSize: 14, color: 'var(--neutral-1000)' }}>Rata-rata Keyakinan AI</span>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-              <span style={{ fontSize: 32, fontWeight: 700, color: 'var(--neutral-1000)' }}>{avgConfidence}</span>
-              <span style={{ fontSize: 18, fontWeight: 700, color: 'var(--neutral-1000)' }}>%</span>
-            </div>
-          </div>
-
-          <div style={{ borderBottom: '1px solid var(--neutral-300)' }} />
-
-          {/* 5. Target Harian Radiolog Progress Bar (Fills empty space) */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-              <span style={{ fontWeight: 600, color: 'var(--neutral-1000)' }}>Target Harian Radiolog</span>
-              <span style={{ color: 'var(--neutral-400)' }}>18 / 20 Kasus (90%)</span>
-            </div>
-            <div style={{ height: 6, width: '100%', background: 'var(--neutral-200)', borderRadius: 999, overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: '90%', background: 'var(--tertiary-600)', borderRadius: 999 }} />
-            </div>
-          </div>
-
-          {/* 6. Distribusi Kasus Aktif Mini Bars */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--neutral-1000)' }}>Distribusi Kategori Kasus</span>
-            <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', gap: 2 }}>
-              <div style={{ flex: categoryCounts.pneumonia, background: 'var(--quaternary-600)' }} title="Pneumonia" />
-              <div style={{ flex: categoryCounts.kanker, background: 'var(--primary-600)' }} title="Kanker Tulang" />
-              <div style={{ flex: categoryCounts.tumor, background: 'var(--tertiary-600)' }} title="Tumor Otak" />
-            </div>
-          </div>
-
-          {/* 7. Live Real-Time Database Sync Badge */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              padding: '6px 10px',
-              background: 'var(--neutral-100)',
-              borderRadius: 6,
-              border: '1px solid var(--neutral-300)',
-              fontSize: 11,
-              color: 'var(--neutral-400)',
-            }}
+          {/* Diverifikasi pada tanggal */}
+          <button
+            type="button"
+            className="stat"
+            onClick={() => navigate('/dokter-radiologi/riwayat')}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#1fc16b', boxShadow: '0 0 6px #1fc16b' }} />
-              <span style={{ color: 'var(--neutral-1000)', fontWeight: 600 }}>Database Real-time Sinkron</span>
-            </div>
-            <Clock size={12} />
+            <span className="lbl">Diverifikasi pada {dmy(range[1])}</span>
+            <span className="num" style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <b style={{ fontSize: 38, lineHeight: '44px', fontWeight: 700, color: 'var(--neutral-1000)', letterSpacing: -0.5 }}>
+                <CountUp to={lst} />
+              </b>
+              <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--neutral-1000)' }}>Kasus</span>
+            </span>
+          </button>
+
+          <div className="hr" />
+
+          {/* Rata-rata Keyakinan AI */}
+          <div className="stat" style={{ cursor: 'default' }}>
+            <span className="lbl">Rata-rata Keyakinan AI</span>
+            <span className="num" style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+              <b style={{ fontSize: 38, lineHeight: '44px', fontWeight: 700, color: 'var(--neutral-1000)', letterSpacing: -0.5 }}>
+                <CountUp to={conf} />
+              </b>
+              <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--neutral-1000)' }}>%</span>
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Bottom Table: Preview Antrean Kasus yang Perlu Verifikasi Segera */}
-      <div className="card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>
-            Antrean Verifikasi Mendesak ({pendingCases.length} Kasus Menunggu)
-          </h2>
-          <button
-            type="button"
-            className="btn btn-outline"
-            style={{ fontSize: 13, padding: '4px 10px' }}
-            onClick={() => navigate('/dokter-radiologi/antrean')}
-          >
-            <span>Lihat Semua Antrean ({pendingCases.length})</span>
-            <ChevronRight size={16} />
-          </button>
+      {/* Bottom Table Card - ANTREAN VERIFIKASI PREVIEW */}
+      <div className="card" style={{ padding: '14px 16px' }}>
+        <div className="thead" style={{ fontSize: 13, paddingBottom: 10, marginBottom: 10 }}>
+          <span className="w150">ID Rekam Medis</span>
+          <span className="w150">Jenis Pemeriksaan</span>
+          <span className="w150">Asal Faskes</span>
+          <span className="w150">Tanggal Masuk</span>
+          <span className="w200">Confidence Score AI</span>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
-          <table>
-            <thead>
-              <tr>
-                <th style={{ width: 140 }}>ID Rekam Medis</th>
-                <th style={{ width: 150 }}>Jenis Pemeriksaan</th>
-                <th style={{ width: 160 }}>Asal Faskes</th>
-                <th style={{ width: 140 }}>Tanggal Masuk</th>
-                <th>Confidence Score AI</th>
-                <th style={{ width: 60, textAlign: 'right' }}>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pendingCases.slice(0, 3).map((item) => {
-                const diag = item.aiResult?.diagnosis || 'Pneumonia'
-                const cat = diag.includes('Tumor') ? 'Tumor Otak' : diag.includes('Kanker') ? 'Kanker Tulang' : 'Pneumonia'
-                return (
-                  <tr
-                    key={item.id}
-                    className="table-row-hover"
-                    style={{ cursor: 'pointer' }}
-                    onClick={() => navigate(`/dokter-radiologi/verifikasi/${encodeURIComponent(item.id)}`)}
-                  >
-                    <td style={{ fontWeight: 600 }}>{item.id}</td>
-                    <td>
-                      <span
-                        style={{
-                          padding: '2px 8px',
-                          borderRadius: 4,
-                          fontSize: 12,
-                          fontWeight: 600,
-                          background:
-                            cat === 'Pneumonia'
-                              ? 'rgba(95, 92, 176, 0.12)'
-                              : cat === 'Kanker Tulang'
-                              ? 'rgba(88, 132, 187, 0.15)'
-                              : 'rgba(90, 187, 130, 0.15)',
-                          color:
-                            cat === 'Pneumonia'
-                              ? 'var(--quaternary-600)'
-                              : cat === 'Kanker Tulang'
-                              ? 'var(--primary-600)'
-                              : 'var(--tertiary-600)',
-                        }}
-                      >
-                        {cat}
-                      </span>
-                    </td>
-                    <td>Faskes Shinyu</td>
-                    <td>{item.createdAt ? item.createdAt.split('-').reverse().join('/') : '19/10/2026'}</td>
-                    <td>
-                      <span style={{ fontWeight: 500 }}>
-                        {diag} | {item.aiResult?.confidence || 90}%
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <button type="button" className="btn btn-outline" style={{ padding: 4 }}>
-                        <ChevronRight size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        {dashTableRows.map((r) => (
+          <div
+            key={r.id}
+            className="trow"
+            style={{ padding: '6px 4px', fontSize: 14 }}
+            onClick={() => navigate(`/dokter-radiologi/verifikasi/${r.id.replace('#', '')}`)}
+          >
+            <div className="cells">
+              <span className="w150" style={{ fontWeight: 700, color: 'var(--primary-600)' }}>{r.id}</span>
+              <span className="w150">{r.jenis}</span>
+              <span className="w150">{r.faskes}</span>
+              <span className="w150">{r.tanggal}</span>
+              <span className="w200">{r.ai}</span>
+            </div>
+            <ChevronRight size={16} className="ico" />
+          </div>
+        ))}
       </div>
     </div>
   )
 }
-
-
 
 export default DokterDashboard

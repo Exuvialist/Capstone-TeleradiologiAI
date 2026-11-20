@@ -76,3 +76,30 @@ export const initialPatient: PatientRecord = {
   status: 'terverifikasi',
   createdAt: '2026-10-10',
 }
+
+/**
+ * Memformat string tanggal (ISO string, YYYY-MM-DD, atau DD/MM/YYYY) menjadi format standar DD/MM/YYYY
+ */
+export function formatDisplayDate(rawDate?: string): string {
+  if (!rawDate) return '19/10/2026'
+  const trimmed = rawDate.trim()
+  // Sudah dalam format DD/MM/YYYY (contoh: 19/10/2026)
+  if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(trimmed)) {
+    return trimmed
+  }
+  // Format YYYY-MM-DD atau ISO string (contoh: 2026-10-19 atau 2026-11-20T03:51:42.597Z)
+  const match = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (match) {
+    const [, y, m, d] = match
+    return `${d}/${m}/${y}`
+  }
+  // Fallback parsing Date
+  const parsed = new Date(trimmed)
+  if (!isNaN(parsed.getTime())) {
+    const d = String(parsed.getDate()).padStart(2, '0')
+    const m = String(parsed.getMonth() + 1).padStart(2, '0')
+    const y = parsed.getFullYear()
+    return `${d}/${m}/${y}`
+  }
+  return trimmed
+}

@@ -325,6 +325,7 @@ export default function Statistika() {
                       </div>
                     )}
                     <div
+                      className="chart-bar-grow"
                       style={{
                         width: '70%',
                         maxWidth: 36,
@@ -335,7 +336,7 @@ export default function Statistika() {
                           ? 'var(--primary-600)'
                           : 'var(--primary-300)',
                         borderRadius: '6px 6px 2px 2px',
-                        transition: 'all 0.25s ease',
+                        animationDelay: `${idx * 40}ms`,
                       }}
                     />
                   </div>
@@ -387,101 +388,40 @@ export default function Statistika() {
         </div>
       </div>
 
-      {/* Tabel Analitik Kasus Terkini */}
-      <div className="section-title" style={{ marginTop: 20, fontWeight: 500 }}>
-        Analitik
+      {/* Tabel Analitik Kasus Terkini (Format Seragam dengan Radiolog) */}
+      <div className="section-title" style={{ marginTop: 20, fontWeight: 700, fontSize: 16 }}>
+        Analitik Kasus Terkini
       </div>
-      <div className="panel" style={{ padding: 0, overflowX: 'auto' }}>
-        <table>
-          <thead>
-            <tr>
-              {[
-                'ID Rekam Medis',
-                'Nama Pasien',
-                'AI Confidence Score',
-                'Radiologi',
-                'Tanggal Verifikasi',
-                'Hasil Verifikasi',
-              ].map((h) => (
-                <th key={h} style={{ color: 'inherit', fontWeight: 700 }}>
-                  {h}
-                </th>
-              ))}
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {displayCases.slice(0, 3).map((c, i) => (
-              <tr
-                key={c.id + i}
-                style={{ cursor: 'pointer', transition: 'background-color 0.15s ease' }}
-                onClick={() => handleRowClick(c)}
-                className="table-row-hover"
-              >
-                <td style={{ fontWeight: 600 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span
-                      style={{
-                        width: 3,
-                        height: 16,
-                        backgroundColor: currentModule.color,
-                        borderRadius: 2,
-                        flexShrink: 0,
-                      }}
-                    />
-                    <span>{c.id}</span>
-                  </div>
-                </td>
-                <td>{c.nama}</td>
-                <td>
-                  <span
-                    style={{
-                      padding: '2px 8px',
-                      borderRadius: 4,
-                      fontSize: 12,
-                      background: 'var(--secondary-200)',
-                      color: 'var(--secondary-1000)',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {c.aiResult ? `${c.aiResult.diagnosis} | ${c.aiResult.confidence}%` : `${currentModule.title} | 90%`}
-                  </span>
-                </td>
-                <td>{c.radiologist || (isBone ? 'Dr. Nadia' : isBrain ? 'Dr. Arif' : 'Dr. Tama')}</td>
-                <td>{c.verificationDate || '19/10/2026'}</td>
-                <td>
-                  <span
-                    style={{
-                      padding: '2px 8px',
-                      borderRadius: 4,
-                      fontSize: 12,
-                      background: 'var(--primary-100)',
-                      color: 'var(--primary-600)',
-                    }}
-                  >
-                    {c.verificationResult || (isBone ? 'Terdeteksi' : isBrain ? 'Terdeteksi' : 'Bukan Pneumonia')}
-                  </span>
-                </td>
-                <td>
-                  <button
-                    type="button"
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      color: 'var(--neutral-800)',
-                    }}
-                    title="Lihat Detail Hasil"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="card" style={{ padding: '14px 16px', marginTop: 10 }}>
+        <div className="thead" style={{ fontSize: 13, paddingBottom: 10, marginBottom: 10 }}>
+          <span className="w150">ID Rekam Medis</span>
+          <span className="w150">Nama Pasien</span>
+          <span className="w150">Dokter Radiologi</span>
+          <span className="w150">Tanggal Verifikasi</span>
+          <span className="w200">Confidence Score AI</span>
+        </div>
+
+        {displayCases.slice(0, 5).map((c, i) => (
+          <div
+            key={c.id + i}
+            className="trow"
+            style={{ padding: '6px 4px', fontSize: 14 }}
+            onClick={() => handleRowClick(c)}
+          >
+            <div className="cells">
+              <span className="w150" style={{ fontWeight: 700, color: 'var(--primary-600)' }}>
+                {c.id}
+              </span>
+              <span className="w150">{c.nama}</span>
+              <span className="w150">{c.radiologist || (isBone ? 'Dr. Nadia' : isBrain ? 'Dr. Arif' : 'Dr. Tama')}</span>
+              <span className="w150">{c.verificationDate || '19/10/2026'}</span>
+              <span className="w200">
+                {c.aiResult ? `${c.aiResult.diagnosis} | ${c.aiResult.confidence}%` : `${currentModule.title} | 90%`}
+              </span>
+            </div>
+            <ChevronRight size={16} className="ico" />
+          </div>
+        ))}
       </div>
     </PneumoniaLayout>
   )
