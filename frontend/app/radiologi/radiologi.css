@@ -1,0 +1,281 @@
+/* Styles halaman Dokter Radiologi (asal: src/index.css Grace).
+   Semua selector diawali .radiologi supaya nggak bocor ke halaman faskes,
+   dan nama animasi diberi awalan rad- supaya nggak bentrok dengan Tailwind. */
+.radiologi {
+  --quaternary-600: #5f5cb0;
+  --neutral-1000: #27272d;
+  --neutral-800: #342f32;
+  --neutral-400: #a6a1a2;
+  --neutral-300: #c3c1c1;
+  --neutral-200: #e1e0e0;
+  --neutral-100: #ffffff;
+  --primary-100: #e7edf5;
+  --primary-300: #b0c5df;
+  --primary-600: #5884bb;
+  --tertiary-600: #5abb82;
+  --red-100: #fb3748;
+  --red-alpha-10: #fb37481a;
+  --secondary-200: #f4deb2;
+  --secondary-300: #efcf90;
+  --secondary-1000: #5c420d;
+  --font: var(--font-clarity-city, 'Clarity City'), 'Inter', system-ui, sans-serif;
+}
+.radiologi * { box-sizing: border-box; margin: 0; }
+.radiologi { font-family: var(--font); color: var(--neutral-1000); background: var(--neutral-100); font-size: 16px; line-height: 24px; }
+.radiologi button, .radiologi input, .radiologi textarea { font: inherit; color: inherit; }
+.radiologi a { color: inherit; text-decoration: none; }
+.radiologi .h-7 { font-weight: 700; font-size: 26px; line-height: 39px; }
+.radiologi .h-6 { font-weight: 700; font-size: 32px; line-height: 48px; }
+.radiologi .b-1 { font-weight: 500; font-size: 18px; line-height: 27px; }
+.radiologi .b-3 { font-size: 14px; line-height: 21px; }
+.radiologi .b-4 { font-size: 12px; line-height: 18px; }
+.radiologi .muted { color: var(--neutral-400); }
+
+/* shell & permanently frozen sidebar */
+.radiologi .shell { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+.radiologi .sidebar { border-right: 1px solid var(--neutral-300); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; width: 280px; background: #fff; z-index: 10; flex-shrink: 0; }
+.radiologi .sb-head { height: 64px; display: flex; align-items: center; gap: 12px; padding: 0 20px; border-bottom: 1px solid var(--neutral-300); }
+.radiologi .sb-head .logo { width: 36px; height: 36px; border-radius: 8px; background: var(--neutral-800); color: #fff; display: grid; place-items: center; font-weight: 700; flex-shrink: 0; }
+.radiologi .sb-head .name { font-weight: 700; flex: 1; white-space: nowrap; overflow: hidden; }
+.radiologi .sb-nav { flex: 1; padding: 14px 20px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; overflow-x: hidden; }
+.radiologi .sb-item { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; font-size: 14px; transition: background-color 0.15s ease; color: inherit; }
+.radiologi .sb-item:hover { background: var(--primary-100); }
+.radiologi .sb-item.active { background: var(--primary-100); font-weight: 600; }
+.radiologi .sb-group { margin-top: 12px; display: flex; flex-direction: column; gap: 4px; }
+.radiologi .sb-group .label { font-size: 12px; color: var(--neutral-400); padding: 0 8px 4px; }
+.radiologi .sq { width: 20px; height: 20px; border-radius: 4px; flex: none; }
+.radiologi .sb-foot { height: 56px; border-top: 1px solid var(--neutral-300); display: flex; align-items: center; gap: 10px; padding: 0 20px; }
+.radiologi .sb-foot .avatar { width: 32px; height: 32px; border-radius: 8px; background: var(--quaternary-600); color: #fff; display: grid; place-items: center; font-weight: 700; flex-shrink: 0; }
+.radiologi .sb-foot .name { flex: 1; font-size: 14px; white-space: nowrap; overflow: hidden; }
+.radiologi .topbar { height: 64px; border-bottom: 1px solid var(--neutral-300); display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: #fff; position: sticky; top: 0; z-index: 5; }
+.radiologi .crumbs { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--neutral-400); }
+.radiologi .crumbs .cur { color: var(--neutral-1000); font-weight: 500; }
+.radiologi .search-btn { width: 305px; height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid var(--neutral-400); border-radius: 8px; background: #fff; color: var(--neutral-400); font-size: 14px; }
+.radiologi .main { padding: 20px; max-width: 1140px; }
+.radiologi .page-title { display: flex; align-items: center; justify-content: space-between; width: 100%; margin-bottom: 14px; font-weight: 700; font-size: 18px; }
+.radiologi .page-title .sq { background: var(--quaternary-600); }
+.radiologi .t18 { font-size: 18px; line-height: 26px; font-weight: 700; }
+.radiologi .tabrow { display: flex; align-items: center; gap: 8px; padding-bottom: 16px; border-bottom: 1px solid var(--neutral-300); margin-bottom: 24px; }
+.radiologi .tabrow .spacer { flex: 1; }
+
+/* buttons */
+.radiologi .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 8px; border-radius: 8px; font-size: 14px; cursor: pointer; border: 1px solid transparent; background: none; white-space: nowrap; transition: all 0.15s ease; text-decoration: none; }
+.radiologi .btn-outline { background: #fff; border-color: var(--neutral-400); color: var(--neutral-1000); }
+.radiologi .btn-outline:hover { background: #f7f7f9; border-color: var(--neutral-800); }
+.radiologi .btn-neutral { background: var(--neutral-800); color: #fff; border-color: var(--neutral-800); }
+.radiologi .btn-neutral:hover { background: var(--neutral-1000); }
+.radiologi .btn-white { background: #fff; border-color: var(--neutral-300); }
+.radiologi .btn-white:hover { background: #f7f7f9; }
+.radiologi .btn-lg { padding: 8px 16px; }
+
+/* cards & forms */
+.radiologi .card { border: 1px solid var(--neutral-300); border-radius: 12px; padding: 20px; background: #fff; }
+.radiologi .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.radiologi .stack { display: flex; flex-direction: column; gap: 16px; }
+.radiologi .field { display: flex; flex-direction: column; gap: 6px; }
+.radiologi .field label { font-size: 14px; font-weight: 500; }
+.radiologi .field label.label-sm, .radiologi .card .field label, .radiologi .label-sm { font-size: 12px; font-weight: 700; }
+
+/* Real & Flexible Inputs */
+.radiologi .input { height: 40px; border: 1px solid var(--neutral-400); border-radius: 8px; padding: 0 12px; display: flex; align-items: center; gap: 8px; background: #fff; font-size: 14px; width: 100%; box-sizing: border-box; outline: none; transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s; font-family: inherit; color: var(--neutral-1000); }
+.radiologi input.input { display: block; }
+.radiologi input.input:focus, .radiologi textarea.input:focus { border-color: var(--primary-600); box-shadow: 0 0 0 2px rgba(88, 132, 187, 0.2); }
+.radiologi input.input::placeholder, .radiologi textarea.input::placeholder { color: var(--neutral-400); }
+.radiologi .input.area { height: 96px; align-items: flex-start; padding: 10px 12px; }
+.radiologi textarea.input.area { height: 96px; padding: 10px 12px; resize: vertical; line-height: 20px; font-family: inherit; }
+.radiologi .input .ph { color: var(--neutral-400); flex: 1; }
+.radiologi .input.filled { background: var(--primary-100); border-color: var(--primary-300); }
+.radiologi .input.sm { height: 36px; padding: 0 10px; border-radius: 8px; width: auto; }
+.radiologi .input.sm.w { min-width: 76px; }
+.radiologi .datefield { display: flex; align-items: center; gap: 8px; }
+
+/* Input Search Box Container */
+.radiologi .input-search-box { display: flex; align-items: center; gap: 8px; height: 40px; border: 1px solid var(--neutral-400); border-radius: 8px; padding: 0 12px; background: #fff; transition: border-color 0.15s, box-shadow 0.15s; box-sizing: border-box; }
+.radiologi .input-search-box:focus-within { border-color: var(--primary-600); box-shadow: 0 0 0 2px rgba(88, 132, 187, 0.2); }
+.radiologi .input-search-box input { border: none; outline: none; background: transparent; width: 100%; font-size: 14px; color: inherit; font-family: inherit; padding: 0; }
+.radiologi .input-search-box input::placeholder { color: var(--neutral-400); }
+
+/* dropzone & fileline */
+.radiologi .dropzone { background: #f5f5f5; border: 1px dashed var(--neutral-400); border-radius: 8px; min-height: 192px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center; font-size: 12px; transition: all 0.2s ease; }
+.radiologi .dropzone.dropzone-active { border-color: var(--primary-600); background-color: var(--primary-100); }
+.radiologi .dropzone b { font-size: 12px; }
+.radiologi .fileline { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+.radiologi .fileline .f { flex: 1; display: flex; align-items: center; gap: 10px; border: 1px solid var(--neutral-400); border-radius: 8px; padding: 6px 10px; font-size: 12px; background: #fff; min-width: 0; }
+.radiologi .fileline .f span.sz { margin-left: auto; font-size: 11px; color: var(--neutral-400); flex-shrink: 0; }
+.radiologi .btn-del { background: var(--red-alpha-10); color: var(--red-100); border-radius: 8px; padding: 8px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.radiologi .btn-del:hover { background: rgba(251, 55, 72, 0.2); }
+
+/* panels & layout */
+.radiologi .section-title { font-weight: 700; font-size: 14px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.radiologi .panel { border: 1px solid var(--neutral-300); border-radius: 16px; padding: 12px 10px; background: #fff; }
+.radiologi .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.radiologi .summary { border: 1px solid var(--neutral-300); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; background: #fff; }
+.radiologi .summary .r { display: flex; justify-content: space-between; gap: 12px; }
+.radiologi .summary .r b { font-weight: 700; }
+.radiologi .banner-ai { background: var(--secondary-300); color: var(--secondary-1000); border-radius: 8px; padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; }
+.radiologi .banner-ai b.n { font-size: 14px; font-weight: 700; }
+.radiologi .footer-actions { display: flex; justify-content: flex-end; gap: 12px; margin-top: 24px; }
+.radiologi .back-row { display: flex; align-items: center; gap: 14px; margin-bottom: 12px; }
+.radiologi .textarea-filled { white-space: pre-wrap; padding: 10px; border-radius: 8px; font-size: 13px; line-height: 21px; }
+
+/* canvas & viewer */
+.radiologi .canvas { background: #d9d9d9; border-radius: 8px; position: relative; min-height: 210px; }
+.radiologi .canvas .dl { position: absolute; top: 8px; right: 8px; }
+.radiologi .tools { display: flex; justify-content: space-between; margin-top: 10px; }
+.radiologi .tools div { display: flex; gap: 8px; }
+
+/* stats */
+.radiologi .stat-split { display: grid; grid-template-columns: 1fr 230px; gap: 8px; }
+.radiologi .side-stat { display: flex; flex-direction: column; }
+.radiologi .side-stat .blk { padding: 12px 0; border-bottom: 1px solid var(--neutral-300); font-size: 12px; font-weight: 500; }
+.radiologi .side-stat .blk:last-child { border-bottom: 0; }
+.radiologi .side-stat .big { font-size: 26px; font-weight: 700; margin-top: 8px; }
+.radiologi .side-stat .big span { font-size: 14px; font-weight: 400; margin-left: 6px; }
+
+/* table */
+.radiologi table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.radiologi th { text-align: left; font-weight: 500; color: var(--neutral-400); padding: 10px 12px; border-bottom: 1px solid var(--neutral-300); }
+.radiologi td { padding: 12px; border-bottom: 1px solid var(--neutral-200); }
+.radiologi tr.table-row-hover:hover td { background-color: rgba(231, 237, 245, 0.45); }
+.radiologi .toolbar { display: flex; gap: 8px; margin-bottom: 16px; }
+.radiologi .pager { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 16px; font-size: 14px; }
+
+/* doctors */
+.radiologi .docs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px; }
+.radiologi .doc { border: 1px solid var(--neutral-300); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: #fff; }
+.radiologi .doc .name { font-weight: 700; font-size: 14px; padding-bottom: 6px; border-bottom: 1px solid var(--neutral-300); }
+.radiologi .doc .kvr { display: flex; font-size: 12px; justify-content: space-between; }
+.radiologi .doc .btnrow { display: flex; justify-content: flex-end; margin-top: 12px; }
+.radiologi .assign-top { display: grid; grid-template-columns: 1fr 1fr 1.15fr; gap: 10px; align-items: end; }
+.radiologi .assign-top .summary { background: #f5f5f5; }
+
+/* Modals & Animations */
+.radiologi .modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); backdrop-filter: blur(2px); display: grid; place-items: center; z-index: 1000; padding: 16px; }
+.radiologi .modal-card { background: #fff; border: 1px solid var(--neutral-300); border-radius: 16px; padding: 24px; width: 100%; max-width: 500px; box-shadow: 0 20px 40px rgba(0,0,0,0.15); animation: rad-zoomIn 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+.radiologi .ai-step { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--neutral-400); }
+.radiologi .ai-step.active { color: var(--neutral-1000); font-weight: 500; }
+.radiologi .step-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--neutral-300); flex-shrink: 0; }
+.radiologi .progress-bar { height: 6px; width: 100%; background: var(--neutral-200); border-radius: 999px; overflow: hidden; margin-top: 14px; }
+.radiologi .progress-fill { height: 100%; background: var(--quaternary-600); border-radius: 999px; transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+
+@keyframes rad-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.radiologi .spin { animation: rad-spin 1s linear infinite; }
+@keyframes rad-fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes rad-slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes rad-slideDown { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes rad-zoomIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+
+/* ========================================================
+   Dokter Radiologi Specific Styles Matching Prototype HTML
+   ======================================================== */
+.radiologi .dash-grid { display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
+.radiologi .chart-card { flex: 1; min-width: 600px; max-width: 100%; height: 495px; position: relative; padding: 0; overflow: hidden; }
+.radiologi .stat-card { width: 240px; height: 495px; padding: 22px 18px; display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0; box-sizing: border-box; }
+.radiologi .stat { display: flex; flex-direction: column; gap: 8px; text-align: left; width: 100%; border: none; background: none; padding: 0; cursor: pointer; color: inherit; }
+.radiologi .stat .lbl { font-size: 16px; font-weight: 600; line-height: 22px; color: var(--neutral-1000); }
+.radiologi .stat .num { display: flex; align-items: baseline; gap: 8px; }
+.radiologi .stat .num b, .radiologi .stat .num b * { font-size: 38px !important; line-height: 44px !important; font-weight: 700 !important; color: var(--neutral-1000); letter-spacing: -0.5px; }
+.radiologi .stat .num > span { font-size: 15px; font-weight: 500; color: var(--neutral-1000); }
+.radiologi .stat:hover .lbl { text-decoration: underline; }
+.radiologi .hr { border-top: 1px solid var(--neutral-300); }
+
+.radiologi .chart2 { display: flex; flex-direction: column; padding: 12px 11px 11px; }
+.radiologi .ch-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.radiologi .ch-head .tot { display: flex; align-items: center; gap: 8px; }
+.radiologi .ch-head .tot b { font-size: 26px; line-height: 39px; font-weight: 700; color: var(--neutral-1000); }
+.radiologi .periods { display: flex; gap: 8px; }
+.radiologi .periods .btn.on { background: var(--neutral-800); border-color: var(--neutral-800); color: #fff; }
+
+.radiologi .ch-sub, .radiologi .ch-foot { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; line-height: 18px; }
+.radiologi .ch-sub { margin: 12px 0 4px; color: var(--neutral-400); }
+.radiologi .ch-foot { margin-bottom: 10px; color: var(--neutral-400); }
+
+.radiologi .ch-plot { position: relative; flex: 1; min-height: 0; margin: 10px 0 30px; }
+.radiologi .gl2 { position: absolute; left: 36px; right: 0; height: 1px; background: var(--neutral-200); }
+.radiologi .yl2 { position: absolute; left: 0; width: 28px; text-align: right; font-size: 12px; line-height: 18px; margin-bottom: -9px; color: var(--neutral-400); }
+.radiologi .groups { position: absolute; left: 36px; right: 0; top: 0; bottom: 0; display: flex; align-items: flex-end; }
+.radiologi .grp { flex: 1; min-width: 0; height: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 2px; position: relative; padding: 0 2px; border-radius: 4px 4px 0 0; cursor: pointer; transition: background-color 0.15s ease; }
+.radiologi .grp:hover { background: rgba(88, 132, 187, 0.1); }
+@keyframes rad-grow {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+@keyframes rad-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.radiologi .bar2 {
+  flex: 0 1 18px;
+  min-width: 2px;
+  border-radius: 3px 3px 0 0;
+  transform-origin: bottom;
+  animation: rad-grow 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transition: height 0.35s ease;
+}
+.radiologi .chart-bar-grow {
+  transform-origin: bottom;
+  animation: rad-grow 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transition: height 0.35s ease, opacity 0.15s ease;
+}
+.radiologi .xl2 { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 6px; font-size: 12px; line-height: 18px; color: var(--neutral-400); white-space: nowrap; }
+
+.radiologi .legend2 { display: flex; gap: 24px; flex-wrap: wrap; font-size: 12px; line-height: 18px; margin-top: auto; }
+.radiologi .legend2 i { display: inline-block; width: 16px; height: 16px; border-radius: 4px; margin-right: 6px; vertical-align: middle; }
+
+/* Popover & Date Range Chips */
+.radiologi .datewrap { position: relative; display: flex; gap: 10px; align-items: center; }
+.radiologi .pop { position: absolute; right: 0; top: calc(100% + 8px); width: 340px; max-width: 92vw; background: #fff; border: 1px solid var(--neutral-300); border-radius: 12px; padding: 12px; box-shadow: 0 12px 32px rgba(39, 39, 45, 0.14); z-index: 40; animation: rad-zoomIn 0.16s cubic-bezier(0.16, 1, 0.3, 1); }
+.radiologi .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.radiologi .chips .btn { padding: 4px 10px; font-size: 12px; }
+.radiologi .pf { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.radiologi .pf label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; font-weight: 700; }
+.radiologi .pf input { border: 1px solid var(--neutral-400); border-radius: 8px; padding: 7px 8px; font-weight: 400; width: 100%; font-size: 12px; }
+.radiologi .err { color: var(--red-100); font-size: 12px; line-height: 18px; min-height: 18px; margin-top: 6px; }
+.radiologi .pa { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+
+/* Detail Page */
+.radiologi .detail { display: flex; gap: 18px; align-items: flex-start; flex-wrap: wrap; }
+.radiologi .detail .left { flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+.radiologi .detail .right { width: 426px; max-width: 100%; display: flex; flex-direction: column; align-items: flex-end; gap: 18px; }
+.radiologi .sub { border: 1px solid var(--neutral-300); border-radius: 12px; padding: 12px; margin-top: 4px; font-size: 13px; line-height: 20px; }
+.radiologi .viewer { height: 240px; background: var(--neutral-200); border: 1px solid var(--neutral-300); border-radius: 8px; position: relative; margin-bottom: 12px; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+.radiologi .viewer .btn { position: absolute; right: 11px; top: 11px; }
+.radiologi .row-between { display: flex; justify-content: space-between; }
+.radiologi .row-between > div { display: flex; gap: 12px; }
+.radiologi .dec { width: 426px; max-width: 100%; min-height: 435px; border: 1px solid var(--neutral-300); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 12px; margin-top: 6px; background: #fff; }
+.radiologi .dec .info { border: 1px solid var(--neutral-300); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.radiologi .dec .info div { display: flex; justify-content: space-between; align-items: center; }
+.radiologi .verif { display: flex; gap: 8px; width: 300px; max-width: 100%; }
+.radiologi .verif button { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s ease; }
+.radiologi .accept { background: rgba(31, 193, 107, 0.1); border-color: #1fc16b; color: #0e7940; }
+.radiologi .accept:hover, .radiologi .accept.sel-on { background: rgba(31, 193, 107, 0.28); font-weight: 700; }
+.radiologi .reject { background: rgba(251, 55, 72, 0.1); border-color: #fb3748; color: #d00416; }
+.radiologi .reject:hover { background: rgba(251, 55, 72, 0.18); }
+.radiologi .reject.sel-on { background: #d00416; border-color: #d00416; color: #fff; font-weight: 700; }
+
+/* Table Styling from Prototype */
+.radiologi .thead, .radiologi .trow { display: flex; gap: 18px; align-items: center; }
+.radiologi .thead { font-weight: 700; padding-bottom: 12px; border-bottom: 1px solid var(--neutral-300); margin-bottom: 12px; font-size: 13px; color: var(--neutral-1000); }
+.radiologi .trow { justify-content: space-between; padding: 8px 6px; border-radius: 6px; cursor: pointer; transition: background-color 0.15s ease; font-size: 13px; }
+.radiologi .trow:hover { background: #f7f6f6; }
+.radiologi .cells { display: flex; gap: 18px; align-items: center; }
+.radiologi .cells > span { word-break: break-word; overflow-wrap: anywhere; white-space: normal; line-height: 1.4; }
+.radiologi .w150 { width: 150px; flex: none; word-break: break-word; overflow-wrap: anywhere; }
+.radiologi .w200 { width: 200px; flex: none; word-break: break-word; overflow-wrap: anywhere; }
+.radiologi .rule { border: 0; border-top: 1px solid var(--neutral-300); margin: 10px 0 24px; }
+.radiologi .empty { padding: 20px; text-align: center; color: var(--neutral-400); font-size: 13px; }
+.radiologi .filters { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+.radiologi .search { display: inline-flex; align-items: center; gap: 10px; height: 38px; padding: 0 12px; border: 1px solid var(--neutral-400); border-radius: 8px; background: #fff; color: var(--neutral-400); width: 280px; max-width: 100%; box-sizing: border-box; cursor: text; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+.radiologi .search:focus-within { border-color: var(--primary-600); box-shadow: 0 0 0 2px rgba(47, 107, 181, 0.15); }
+.radiologi .search svg { flex-shrink: 0; }
+.radiologi .search input { border: none !important; outline: none !important; background: transparent !important; width: 100%; height: 100%; padding: 0 !important; margin: 0 !important; font-size: 14px; font-family: inherit; color: var(--neutral-1000); }
+.radiologi .search input::placeholder { color: var(--neutral-400); }
+.radiologi .sel { position: relative; display: inline-flex; align-items: center; }
+.radiologi .sel select { appearance: none; -webkit-appearance: none; height: 38px; padding: 0 34px 0 12px; border: 1px solid var(--neutral-400); border-radius: 8px; background: #fff; cursor: pointer; font-size: 14px; font-family: inherit; color: var(--neutral-1000); box-sizing: border-box; outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+.radiologi .sel select:focus { border-color: var(--primary-600); box-shadow: 0 0 0 2px rgba(47, 107, 181, 0.15); }
+.radiologi .sel .sel-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; color: var(--neutral-400); }
+
+/* Tambahan saat dipindah ke Next.js: tombol ikon kotak (.btn.sq) jangan ikut ukuran 20px milik kotak warna .sq */
+.radiologi .btn.sq { width: 32px; height: 32px; padding: 0; }
+.radiologi .btn svg { flex-shrink: 0; }

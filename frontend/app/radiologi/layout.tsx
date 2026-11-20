@@ -1,15 +1,18 @@
-import Sidebar, { SidebarProvider } from "@/components/Sidebar";
+import { ToastProvider } from "@/components/ToastProvider";
 import { VerificationProvider } from "@/components/VerificationProvider";
+import DokterShell from "./DokterShell";
+import "./radiologi.css";
 
+// Dokter Radiologi pages: Grace's layout and styles, Mel's data (VerificationProvider + data/mock.ts).
+// The .radiologi wrapper keeps Grace's CSS from leaking into the faskes pages.
 export default function RadiologiLayout({ children }: LayoutProps<"/radiologi">) {
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen">
-        <Sidebar role="radiologi" />
-        <div className="min-w-0 flex-1">
-          <VerificationProvider>{children}</VerificationProvider>
-        </div>
-      </div>
-    </SidebarProvider>
+    <div className="radiologi">
+      <ToastProvider>
+        <VerificationProvider>
+          <DokterShell>{children}</DokterShell>
+        </VerificationProvider>
+      </ToastProvider>
+    </div>
   );
 }

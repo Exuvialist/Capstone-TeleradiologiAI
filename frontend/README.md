@@ -4,6 +4,8 @@ Web app where a **Faskes 3T** (remote health facility) uploads a patient's X-ray
 
 This folder is **frontend only**. Every screen works on **dummy data** in `data/mock.ts`, accounts live in the dev server's memory, and anything else you "save" (drafts, assignments, verifications) lives in the browser until refresh. The section [Connecting the backend](#connecting-the-backend) lists exactly what to replace.
 
+> **Known gap: the two roles don't share data yet.** A Manual/Automatic Assignment made by the faskes does not reach the radiologist's queue, and a radiologist's verification does not reach the faskes pages. Both wait for the backend; see [Faskes ↔ Radiologi data flow](#faskes--radiologi-data-flow).
+
 Design reference: the Figma file *UI Design | Capstone*, plus `documentation.md` (colors, type, spacing, components) and `roadmap.md` (every decision made while building).
 
 ---
@@ -42,7 +44,8 @@ Open http://localhost:3000. It redirects to the login page.
 - **Next.js 16.4.6** (App Router) with **Cache Components** on (`next.config.ts`; see [Next.js notes](#nextjs-notes))
 - **React 19.3**, **TypeScript**
 - **Tailwind CSS v4**: design tokens (Figma colors, text styles, radius) live in `app/globals.css` under `@theme`. Tailwind's default colors are switched off, so only Figma colors exist (`bg-primary-100`, `text-neutral-1000`, …). Text styles are `text-h1`…`text-h8` and `text-b1`…`text-b5`.
-- **react-feather** for icons, **Recharts 3** for the bar charts
+- **react-feather** for icons, **Recharts 3** for the bar charts (Faskes pages)
+- **Radiologi pages** use their own plain CSS (`app/radiologi/radiologi.css`, every selector scoped under `.radiologi`) and **lucide-react** icons; see [Radiologi pages](#radiologi-pages)
 - **Clarity City** font in `public/font/` (with its license), loaded in `app/layout.tsx`
 
 ---
@@ -70,10 +73,15 @@ frontend/
 │  │        ├─ assign/page.tsx + AssignView.tsx
 │  │        └─ laporan/page.tsx + Report.tsx
 │  └─ radiologi/                     # role: Dokter Radiologi
-│     ├─ layout.tsx                  # sidebar + VerificationProvider
-│     ├─ dashboard/page.tsx
-│     ├─ antrean/page.tsx, antrean/[id]/page.tsx
-│     └─ riwayat/page.tsx, riwayat/[id]/page.tsx
+│     ├─ layout.tsx                  # .radiologi wrapper + ToastProvider + VerificationProvider + DokterShell
+│     ├─ DokterShell.tsx             # sidebar + top bar (breadcrumb, search)
+│     ├─ format.ts                   # Exam → display text (dates, "Pneumonia | 90%", verdict)
+│     ├─ radiologi.css               # all Radiologi styles, scoped under .radiologi
+│     ├─ dashboard/page.tsx + DokterDashboard.tsx
+│     ├─ antrean/page.tsx + DokterAntrean.tsx
+│     ├─ antrean/[id]/page.tsx + DokterVerifikasi.tsx
+│     ├─ riwayat/page.tsx + DokterRiwayat.tsx
+│     └─ riwayat/[id]/page.tsx       # old version, no longer linked (see Radiologi pages)
 ├─ components/                       # shared UI (Button, Sidebar, PageShell, ExamTable, …)
 ├─ data/mock.ts                      # ALL dummy data + the data types
 ├─ proxy.ts                          # redirects by login + role
@@ -100,11 +108,11 @@ Pages (`page.tsx`) are server components. Anything interactive is a `"use client
 | `/faskes/pemeriksaan/[jenis]/[id]/assign` | Manual Assignment: pick a radiologist | Desktop-11 | `assign/AssignView.tsx` |
 | `/faskes/pemeriksaan/[jenis]/[id]/laporan` | Export Laporan: printable report of a verified exam | none | `laporan/Report.tsx` |
 | `/faskes/riwayat` | All verified exams | Desktop-16 | `components/ExamTable.tsx` |
-| `/radiologi/dashboard` | Radiologist dashboard | Desktop-17 | `components/Analytics.tsx` |
-| `/radiologi/antrean` | Antrean Verifikasi: the radiologist's queue | Desktop-20 | `components/RadiologiList.tsx` |
-| `/radiologi/antrean/[id]` | Verify a case: Terima / Tolak Hasil AI | Desktop-29, -30 | `components/VerifyView.tsx` |
-| `/radiologi/riwayat` | The radiologist's verified cases | Desktop-31 | `components/RadiologiList.tsx` |
-| `/radiologi/riwayat/[id]` | A verified case, read-only | (Desktop-29 layout) | `components/VerifyView.tsx` |
+| `/radiologi/dashboard` | Radiologist dashboard | Desktop-17 | `radiologi/dashboard/DokterDashboard.tsx` |
+| `/radiologi/antrean` | Antrean Verifikasi: the radiologist's queue | Desktop-20 | `radiologi/antrean/DokterAntrean.tsx` |
+| `/radiologi/antrean/[id]` | Verify a case: Terima / Tolak Hasil AI | Desktop-29, -30 | `radiologi/antrean/[id]/DokterVerifikasi.tsx` |
+| `/radiologi/riwayat` | The radiologist's verified cases | Desktop-31 | `radiologi/riwayat/DokterRiwayat.tsx` |
+| `/radiologi/riwayat/[id]` | A verified case, read-only (old version, not linked from Riwayat) | (Desktop-29 layout) | `components/VerifyView.tsx` |
 
 ---
 
@@ -191,7 +199,9 @@ With the backend:
 | `app/faskes/pemeriksaan/[jenis]/[id]/page.tsx`, `…/assign/page.tsx` | one exam by `id` | one exam by ID |
 | `app/faskes/pemeriksaan/[jenis]/[id]/assign/AssignView.tsx` | `radiologists` | radiologist list |
 | `app/radiologi/antrean/[id]/page.tsx`, `riwayat/[id]/page.tsx` | `radiologistExams` (one by `id`) | one exam by ID |
-| `components/Analytics.tsx` (client) | `exams`, or the radiologist's cases via `useRadiologistExams()` | exams for the role and date range, or ready-made numbers |
+| `components/Analytics.tsx` (client) | `exams` (Faskes dashboard + Statistika) | exams for the date range, or ready-made numbers |
+| `app/radiologi/*/Dokter*.tsx` (client) | the radiologist's cases via `useRadiologistExams()` | the logged-in radiologist's exams |
+| `app/radiologi/DokterShell.tsx` (client) | `exams` (breadcrumb label), the `name` cookie | the exam from the page, the logged-in user (`/me`) |
 | `components/VerificationProvider.tsx` (client) | `radiologistExams` + verifications made in the browser | the logged-in radiologist's exams |
 | `components/Sidebar.tsx` | the `name` / `username` cookies, falling back to the dummy accounts | the logged-in user (`/me`) |
 | `components/DraftProvider.tsx` (client) | drafts made in the browser | the faskes' drafts |
@@ -206,9 +216,22 @@ Client components can't read server data directly: either pass the data from the
 | **Simpan Draft** / **Hapus Draft** | `buat/BuatForm.tsx` → `save()` / `discard()` | `components/DraftProvider.tsx`, in the browser until refresh | the form values (create or update the draft) / the draft ID to delete |
 | **Manual Assignment** | `assign/AssignView.tsx` → "Assign" on a card → confirmation pop-up → `assign(exam.id, doctor)` | `components/AssignmentProvider.tsx`, in the browser until refresh | exam ID + radiologist |
 | **Automatic Assignment** | `[id]/DetailView.tsx` → `assign(exam.id, null)` | same provider | exam ID, "pick a doctor for me" |
-| **Konfirmasi Keputusan** | `components/VerifyView.tsx` → `verify(…)` | `components/VerificationProvider.tsx`, in the browser until refresh, **Radiologi pages only** (the faskes side doesn't see it) | exam ID, `verdictPositive`, `note` (required when the AI result is rejected). The server sets `verifiedAt` |
+| **Konfirmasi Keputusan** | `app/radiologi/antrean/[id]/DokterVerifikasi.tsx` → `verify(…)` | `components/VerificationProvider.tsx`, in the browser until refresh, **Radiologi pages only** (the faskes side doesn't see it). "Terima" keeps the AI's answer, "Tolak" flips it | exam ID, `verdictPositive`, `note` (required when the AI result is rejected). The server sets `verifiedAt` |
 
 Once these call the API, `AssignmentProvider` and `VerificationProvider` can be removed and the pages read the updated exam from the server.
+
+### Faskes ↔ Radiologi data flow
+
+**Not connected yet.** Each role keeps its own changes in its own provider, mounted in its own layout, so the other role never sees them:
+
+| Direction | Saved in | Missing today |
+|---|---|---|
+| Faskes → Radiologi (assign a doctor) | `AssignmentProvider` (`app/faskes/layout.tsx`) | the case doesn't appear in the doctor's Antrean Verifikasi |
+| Radiologi → Faskes (verify a case) | `VerificationProvider` (`app/radiologi/layout.tsx`) | the result doesn't appear in Terverifikasi, the detail page or the Laporan |
+
+**Plan: the backend connects them.** Both sides already use the same `Exam` type, so nothing changes in the screens: `POST /exams/{id}/assign` sets `radiologist` / `autoAssigned`, `POST /exams/{id}/verify` sets `verifiedAt` / `verdictPositive` / `note`, and both roles read the updated exam from `GET /exams`.
+
+**Temporary option (only if a demo needs it before the backend):** keep assignments and verdicts in `localStorage`, and move `AssignmentProvider` and `VerificationProvider` up to `app/layout.tsx` so both roles read the same state. Works only in the same browser; replace it with the API calls above later.
 
 ### Suggested API
 
@@ -252,9 +275,23 @@ This Next.js version ships its own docs in `node_modules/next/dist/docs/`; read 
 
 ---
 
+## Radiologi pages
+
+The Dokter Radiologi screens were first built in a separate Vite app and moved into this project. They keep that app's look, but read the same data as the faskes pages (`data/mock.ts` + `VerificationProvider`).
+
+- **Styling:** plain CSS in `app/radiologi/radiologi.css`, not Tailwind. Every selector starts with `.radiologi` (the wrapper in `app/radiologi/layout.tsx`), and its animations are named `rad-*`, so nothing leaks into the faskes pages. Colors are CSS variables at the top of that file (same hex values as the Figma tokens).
+- **Icons:** `lucide-react` (the faskes pages use `react-feather`; Lucide started as a fork of Feather, so most icon names match).
+- **Notifications:** `components/ToastProvider.tsx` (`useToast().addToast(text, "success" | "info" | "warning")`), one toast at a time, bottom-right. Only mounted in the Radiologi layout for now.
+- **Dashboard chart:** the bar chart in `DokterDashboard.tsx` still draws generated numbers (`dayVals`), not exams. The four stat cards and the table under it use real case data. Switch the chart to `exams` (or `/stats`) together with the backend.
+- **Not responsive yet:** the sidebar is a fixed 280 px (no drawer below 1024 px like the faskes pages).
+- **Old files:** `app/radiologi/riwayat/[id]/page.tsx`, `components/VerifyView.tsx` and `components/RadiologiList.tsx` belong to the previous Radiologi version. Riwayat rows don't link to a detail page anymore; delete them or port the detail page when needed.
+
+---
+
 ## Conventions
 
 - **Desktop (1440 px) matches Figma.** Content is max 1100 px wide and centered.
+- The conventions below are for the **faskes pages** (Tailwind). The Radiologi pages follow their own CSS; see [Radiologi pages](#radiologi-pages).
 - **Responsive:** below 1024 px the sidebar becomes a drawer (layout button in the top bar). Pages switch layout by the **content width**, not the window: `<main>` is a CSS container and components use Tailwind container variants like `@4xl:flex-row`.
 - **Tables** (`components/ExamTable.tsx`): one component; `kind` picks the column set, `tools` adds search + a sort icon (`"sort"`: Faskes Dalam Proses / Terverifikasi) or search + filter buttons (`"filters"`: Faskes Riwayat, Radiologi Antrean / Riwayat). Rows are a fixed 42 px (two lines, text centered), and tables scroll sideways on narrow screens.
 - **Figma borders:** buttons and fields draw their border inside the padding (`p-[7px]` + `border` = Figma's 8 px); panels and info boxes add it outside (`p-3` + `border`).
