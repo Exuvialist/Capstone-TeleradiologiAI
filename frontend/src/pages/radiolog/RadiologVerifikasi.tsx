@@ -57,7 +57,8 @@ export function DokterVerifikasi() {
       setKeputusanRad(jenis)
       setAlasanMod('')
     } else {
-      setKeputusanRad(`Bukan ${jenis}`)
+      const opp = jenis.startsWith('Bukan ') ? jenis.replace('Bukan ', '') : `Bukan ${jenis}`
+      setKeputusanRad(opp)
       setAlasanMod(record.gejala || DEFAULT_SYMPTOM)
     }
   }

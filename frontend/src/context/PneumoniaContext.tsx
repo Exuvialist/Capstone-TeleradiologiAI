@@ -110,9 +110,17 @@ export function generateComprehensiveCases(): PatientRecord[] {
 
       let finding = ''
       let verResult = ''
+      let finalDiag: string = cat
       if (cat === 'Pneumonia') {
-        finding = 'Infiltrasi bercak opasitas konsisten dengan pneumonia lobaris.'
-        verResult = isPending ? '' : (counter % 3 === 0 ? 'Tidak terdeteksi' : 'Terdeteksi')
+        const isNegAi = id === '#PN-0126' || id === '#PN-0129' || counter % 7 === 0
+        if (isNegAi) {
+          finalDiag = 'Bukan Pneumonia'
+          finding = 'Corakan bronkovaskular dalam batas normal. Tidak tampak infiltrat, konsolidasi pneumonik, maupun efusi pleura. Cor dan pulmo normal (Bukan Pneumonia).'
+          verResult = isPending ? '' : 'Tidak terdeteksi'
+        } else {
+          finding = 'Infiltrasi bercak opasitas konsisten dengan pneumonia lobaris.'
+          verResult = isPending ? '' : (counter % 3 === 0 ? 'Tidak terdeteksi' : 'Terdeteksi')
+        }
       } else if (cat === 'Kanker Tulang') {
         finding = 'Lesi osteolitik metafisis disertai reaksi periosteal sunburst.'
         verResult = isPending ? '' : (counter % 4 === 0 ? 'Tidak terdeteksi' : 'Terdeteksi')
@@ -129,14 +137,16 @@ export function generateComprehensiveCases(): PatientRecord[] {
         yyyy: String(1975 + (counter % 30)),
         gender: counter % 2 === 0 ? 'L' : 'P',
         gejala:
-          cat === 'Pneumonia'
+          finalDiag === 'Bukan Pneumonia'
+            ? 'Pemeriksaan radiologi rutin skrining kesehatan toraks. Tidak ada sesak napas maupun demam, SpO2 normal 99%.'
+            : cat === 'Pneumonia'
             ? 'Pasien datang dengan keluhan sesak napas yang meningkat sejak [X] hari, batuk berdahak kental, dan demam naik-turun. SpO2: 92%.'
             : cat === 'Kanker Tulang'
             ? 'Nyeri tumpul pada tungkai bawah kanan, teraba massa/pembengkakan lokal sejak 3 minggu.'
             : 'Nyeri kepala hebat kronis memberat di pagi hari, muntah proyektil, defisit neurologis fokal.',
         files: [{ name: `scan-${prefix.toLowerCase()}-${counter}.jpeg`, size: '134.KB', url: '/sample-xray.jpeg' }],
         aiResult: {
-          diagnosis: cat,
+          diagnosis: finalDiag,
           confidence: conf,
           finding,
         },
@@ -217,6 +227,38 @@ export const PneumoniaProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (saved) {
         const parsed = JSON.parse(saved) as PatientRecord[]
         if (Array.isArray(parsed) && parsed.length >= 50) {
+          const hasBukan = parsed.some((c) => c.aiResult?.diagnosis === 'Bukan Pneumonia')
+          if (!hasBukan) {
+            const updated = parsed.map((c) => {
+              if (c.id === '#PN-0126') {
+                return {
+                  ...c,
+                  status: 'menunggu' as const,
+                  gejala: 'Pemeriksaan radiologi rutin skrining kesehatan toraks. Tidak ada sesak napas maupun demam, SpO2 normal 99%.',
+                  aiResult: {
+                    diagnosis: 'Bukan Pneumonia',
+                    confidence: 93,
+                    finding: 'Corakan bronkovaskular dalam batas normal. Tidak tampak infiltrat, konsolidasi pneumonik, maupun efusi pleura. Cor dan pulmo normal (Bukan Pneumonia).',
+                  },
+                }
+              }
+              if (c.id === '#PN-0129') {
+                return {
+                  ...c,
+                  status: 'terverifikasi' as const,
+                  verificationResult: 'Tidak terdeteksi',
+                  aiResult: {
+                    diagnosis: 'Bukan Pneumonia',
+                    confidence: 95,
+                    finding: 'Jantung dan paru dalam batas normal. Sinus kostofrenikus lancar tajam, tidak ada tanda pneumonia aktif.',
+                  },
+                }
+              }
+              return c
+            })
+            localStorage.setItem('teleradiologi_cases', JSON.stringify(updated))
+            return updated
+          }
           return parsed
         }
       }

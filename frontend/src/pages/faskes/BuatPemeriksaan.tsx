@@ -139,6 +139,23 @@ export default function BuatPemeriksaan({ filled = false }: { filled?: boolean }
     addToast(`Data contoh pasien (${isBone ? 'Kanker Tulang' : isBrain ? 'Tumor Otak' : 'Pneumonia'}) terisi otomatis.`, 'info')
   }
 
+  const handleFillNegativeSample = () => {
+    setCurrentCase((prev) => ({
+      ...prev,
+      id: '#PN-0888',
+      nama: 'Ratna Permata',
+      dd: '15',
+      mm: 'Jul',
+      yyyy: '1998',
+      gender: 'P',
+      gejala: 'Pemeriksaan radiologi rutin skrining kesehatan toraks. Tidak ada sesak napas maupun demam, SpO2 normal 99%.',
+      files: [
+        { name: 'rontgen-toraks-normal.jpeg', size: '124.KB', url: '/sample-xray.jpeg' },
+      ],
+    }))
+    addToast('Data contoh terisi: Skrining Toraks Normal (AI akan deteksi "Bukan Pneumonia").', 'info')
+  }
+
   const handleStartAnalysis = async () => {
     setIsAnalyzing(true)
     setAnalysisStep(1)
@@ -152,6 +169,15 @@ export default function BuatPemeriksaan({ filled = false }: { filled?: boolean }
     }, 1400)
 
     setTimeout(async () => {
+      const isNeg =
+        !isBone &&
+        !isBrain &&
+        (currentCase.id === '#PN-0888' ||
+          currentCase.nama.toLowerCase().includes('ratna') ||
+          currentCase.gejala.toLowerCase().includes('skrining') ||
+          currentCase.gejala.toLowerCase().includes('bukan') ||
+          currentCase.gejala.toLowerCase().includes('normal'))
+
       const targetAiResult = isBone
         ? {
             diagnosis: 'Kanker Tulang (Osteosarcoma)',
@@ -163,6 +189,12 @@ export default function BuatPemeriksaan({ filled = false }: { filled?: boolean }
             diagnosis: 'Tumor Otak (Meningioma)',
             confidence: 92,
             finding: 'Massa ekstra-aksial lobus frontoparietal berbatas tegas dengan perifocal edema.',
+          }
+        : isNeg
+        ? {
+            diagnosis: 'Bukan Pneumonia',
+            confidence: 94,
+            finding: 'Cor dan pulmo dalam batas normal, sinus kostofrenikus lancar tajam, tidak tampak infiltrat maupun konsolidasi pneumonia.',
           }
         : {
             diagnosis: 'Pneumonia',
@@ -193,15 +225,28 @@ export default function BuatPemeriksaan({ filled = false }: { filled?: boolean }
         <div>
           <div className="section-title">
             <span>Data Pasien</span>
-            <button
-              type="button"
-              onClick={handleFillSample}
-              className="btn btn-outline"
-              style={{ fontSize: 11, padding: '2px 8px', height: 26, gap: 4 }}
-              title="Isi cepat dengan data contoh"
-            >
-              <Sparkles size={12} /> Contoh Data
-            </button>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={handleFillSample}
+                className="btn btn-outline"
+                style={{ fontSize: 11, padding: '2px 8px', height: 26, gap: 4 }}
+                title="Isi cepat dengan data contoh positif"
+              >
+                <Sparkles size={12} /> Contoh Data
+              </button>
+              {!isBone && !isBrain && (
+                <button
+                  type="button"
+                  onClick={handleFillNegativeSample}
+                  className="btn btn-outline"
+                  style={{ fontSize: 11, padding: '2px 8px', height: 26, gap: 4 }}
+                  title="Isi cepat dengan data contoh Bukan Pneumonia"
+                >
+                  <Sparkles size={12} /> Contoh Bukan Pneumonia
+                </button>
+              )}
+            </div>
           </div>
           <PatientCard
             p={{

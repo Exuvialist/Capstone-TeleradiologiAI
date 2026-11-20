@@ -15,10 +15,10 @@ const DEFAULT_QUEUE = [
   { id: '#PN-0123', jenis: 'Pneumonia', faskes: 'Faskes Shinyu', tanggal: '19/10/2026', ai: 'Pneumonia | 90%' },
   { id: '#KT-0124', jenis: 'Kanker Tulang', faskes: 'Faskes Dohoon', tanggal: '19/10/2026', ai: 'Kanker Tulang | 87%' },
   { id: '#TO-0125', jenis: 'Tumor Otak', faskes: 'Faskes Youngjae', tanggal: '18/10/2026', ai: 'Tumor Otak | 94%' },
-  { id: '#PN-0126', jenis: 'Pneumonia', faskes: 'Faskes Hanjin', tanggal: '18/10/2026', ai: 'Pneumonia | 92%' },
+  { id: '#PN-0126', jenis: 'Pneumonia', faskes: 'Faskes Hanjin', tanggal: '18/10/2026', ai: 'Bukan Pneumonia | 93%' },
   { id: '#TO-0127', jenis: 'Tumor Otak', faskes: 'Faskes Jihoon', tanggal: '17/10/2026', ai: 'Tumor Otak | 89%' },
   { id: '#KT-0128', jenis: 'Kanker Tulang', faskes: 'Faskes Kyungmin', tanggal: '17/10/2026', ai: 'Kanker Tulang | 95%' },
-  { id: '#PN-0129', jenis: 'Pneumonia', faskes: 'Faskes Shinyu', tanggal: '16/10/2026', ai: 'Pneumonia | 88%' },
+  { id: '#PN-0129', jenis: 'Pneumonia', faskes: 'Faskes Shinyu', tanggal: '16/10/2026', ai: 'Bukan Pneumonia | 95%' },
   { id: '#KT-0130', jenis: 'Kanker Tulang', faskes: 'Faskes Dohoon', tanggal: '16/10/2026', ai: 'Kanker Tulang | 91%' },
   { id: '#TO-0131', jenis: 'Tumor Otak', faskes: 'Faskes Youngjae', tanggal: '15/10/2026', ai: 'Tumor Otak | 93%' },
   { id: '#PN-0132', jenis: 'Pneumonia', faskes: 'Faskes Hanjin', tanggal: '15/10/2026', ai: 'Pneumonia | 96%' },
@@ -40,14 +40,18 @@ export function DokterAntrean() {
       .map((c) => {
         const diag = c.aiResult?.diagnosis || 'Pneumonia'
         const conf = c.aiResult?.confidence || 90
-        const cat = diag.includes('Tumor') ? 'Tumor Otak' : diag.includes('Kanker') ? 'Kanker Tulang' : 'Pneumonia'
+        const isBone = diag.includes('Kanker') || c.id.startsWith('#KT-')
+        const isBrain = diag.includes('Tumor') || c.id.startsWith('#TO-')
+        const cat = isBone ? 'Kanker Tulang' : isBrain ? 'Tumor Otak' : 'Pneumonia'
+        const isNeg = diag.toLowerCase().includes('bukan') || diag.toLowerCase().includes('tidak')
+        const aiLabel = isNeg ? `Bukan ${cat}` : cat
         const dStr = formatDisplayDate(c.createdAt)
         return {
           id: c.id,
           jenis: cat,
           faskes: c.faskes || 'Faskes Shinyu',
           tanggal: dStr,
-          ai: `${cat} | ${conf}%`,
+          ai: `${aiLabel} | ${conf}%`,
         }
       })
 

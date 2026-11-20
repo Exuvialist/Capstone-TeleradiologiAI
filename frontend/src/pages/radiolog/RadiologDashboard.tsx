@@ -294,21 +294,25 @@ export function DokterDashboard() {
       .map((c) => {
         const diag = c.aiResult?.diagnosis || 'Pneumonia'
         const confVal = c.aiResult?.confidence || 90
-        const cat = diag.includes('Tumor') ? 'Tumor Otak' : diag.includes('Kanker') ? 'Kanker Tulang' : 'Pneumonia'
+        const isBone = diag.includes('Kanker') || c.id.startsWith('#KT-')
+        const isBrain = diag.includes('Tumor') || c.id.startsWith('#TO-')
+        const cat = isBone ? 'Kanker Tulang' : isBrain ? 'Tumor Otak' : 'Pneumonia'
+        const isNeg = diag.toLowerCase().includes('bukan') || diag.toLowerCase().includes('tidak')
+        const aiLabel = isNeg ? `Bukan ${cat}` : cat
         const dStr = formatDisplayDate(c.createdAt)
         return {
           id: c.id,
           jenis: cat,
           faskes: c.faskes || 'Faskes Dohoon',
           tanggal: dStr,
-          ai: `${cat} | ${confVal}%`,
+          ai: `${aiLabel} | ${confVal}%`,
         }
       })
     if (livePending.length >= 3) return livePending
     return [
       { id: '#PN-0123', jenis: 'Pneumonia', faskes: 'Faskes Dohoon', tanggal: '19/10/2026', ai: 'Pneumonia | 90%' },
+      { id: '#PN-0126', jenis: 'Pneumonia', faskes: 'Faskes Hanjin', tanggal: '18/10/2026', ai: 'Bukan Pneumonia | 93%' },
       { id: '#KT-0124', jenis: 'Kanker Tulang', faskes: 'Faskes Youngjae', tanggal: '18/10/2026', ai: 'Bukan Kanker Tulang | 92%' },
-      { id: '#TO-0125', jenis: 'Tumor Otak', faskes: 'Faskes Jihoon', tanggal: '17/10/2026', ai: 'Tumor Otak | 94%' },
     ]
   }, [cases])
 
