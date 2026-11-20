@@ -8,10 +8,12 @@ import Button from "@/components/Button";
 import { examTypes } from "@/data/mock";
 
 // Figma: sidebar 249:1048 (Faskes 3T, footer menu open) and 228:784 (Dokter Radiologi).
-// The footer menu only has Log Out; the role switch from Desktop-32 was removed once login existed.
+// The footer menu shows who is logged in (name, username, role) and Log Out; the role switch from Desktop-32 was removed once login existed.
 const roles = {
   faskes: {
     name: "Faskes 3T",
+    username: "faskes3t",
+    roleLabel: "Faskes",
     links: [
       { href: "/faskes/dashboard", label: "Dashboard", icon: Home },
       { href: "/faskes/riwayat", label: "Riwayat", icon: Package },
@@ -19,6 +21,8 @@ const roles = {
   },
   radiologi: {
     name: "Dr. Shinyu",
+    username: "drshinyu",
+    roleLabel: "Dokter Radiologi",
     links: [
       { href: "/radiologi/dashboard", label: "Dashboard", icon: Home },
       { href: "/radiologi/antrean", label: "Antrean Verifikasi", icon: Loader },
@@ -27,9 +31,9 @@ const roles = {
   },
 };
 
-// The logged-in account's name, from the "name" cookie set at login. Falls back to the role's dummy name.
-const readName = () => {
-  const match = document.cookie.match(/(?:^|; )name=([^;]*)/);
+// The logged-in account's name / username, from the cookies set at login. Fall back to the role's dummy account.
+const readCookie = (key: string) => {
+  const match = document.cookie.match(new RegExp(`(?:^|; )${key}=([^;]*)`));
   return match ? decodeURIComponent(match[1]) : null;
 };
 const noSubscribe = () => () => {};
@@ -61,9 +65,10 @@ export default function Sidebar({ role }: { role: keyof typeof roles }) {
   const collapsed = rail && !open; // the drawer is always full width
   const [groupOpen, setGroupOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
-  const name = useSyncExternalStore(noSubscribe, readName, () => null) ?? roles[role].name;
+  const name = useSyncExternalStore(noSubscribe, () => readCookie("name"), () => null) ?? roles[role].name;
+  const username = useSyncExternalStore(noSubscribe, () => readCookie("username"), () => null) ?? roles[role].username;
   const initial = name.replace(/^dr\.?\s*/i, "").charAt(0).toUpperCase(); // "Dr. Shinyu" → S, as in Figma
-  const { links } = roles[role];
+  const { links, roleLabel } = roles[role];
 
   const navLink = ({ href, label, icon: Icon }: (typeof links)[number]) => (
     <Button
@@ -145,6 +150,13 @@ export default function Sidebar({ role }: { role: keyof typeof roles }) {
         <div className="relative flex h-14 shrink-0 items-center border-t border-neutral-300 px-2 pb-0.5">
           {menuOpen && (
             <div className="absolute bottom-[calc(100%-1px)] left-2 z-10 flex w-[276px] flex-col gap-1 rounded-sm border border-primary-200 bg-primary-100 p-1">
+              {/* Who is logged in */}
+              <div className="flex flex-col gap-0.5 p-2">
+                <span className="truncate font-bold">{name}</span>
+                <span className="truncate text-b4">@{username}</span>
+                <span className="text-b4">{roleLabel}</span>
+              </div>
+              <div className="-mb-px h-px bg-primary-200" />
               <form action={logout}>
                 <button type="submit" className={`${menuItem} text-red-200`}>
                   <LogIn />

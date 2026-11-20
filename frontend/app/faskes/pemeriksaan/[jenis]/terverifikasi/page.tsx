@@ -16,7 +16,7 @@ export default async function TerverifikasiPage({ params }: PageProps<"/faskes/p
   return (
     <PageShell crumbs={["Detail Pemeriksaan", `${exam.label} - Terverifikasi`]}>
       <ExamTabs exam={exam} active="terverifikasi" />
-      <ExamTable rows={exams.filter((e) => e.type === exam.slug && e.verifiedAt)} pageSize={10} tools />
+      <ExamTable rows={exams.filter((e) => e.type === exam.slug && e.verifiedAt)} pageSize={10} tools="sort" />
     </PageShell>
   );
 }

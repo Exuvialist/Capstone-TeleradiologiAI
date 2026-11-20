@@ -85,13 +85,14 @@ type Props = {
   rows: Exam[];
   kind?: keyof typeof kinds;
   pageSize?: number; // no pagination when left out
-  tools?: boolean; // search + sort (Faskes) or search + filters (Radiologi) above the table
+  tools?: "sort" | "filters"; // above the table: search + sort icon (Faskes tabs), or search + filter buttons (Desktop-20 / -31)
   typeBar?: boolean; // colored exam-type bar at the start of each row
 };
 
-export default function ExamTable({ rows, kind = "faskes", pageSize, tools = false, typeBar = false }: Props) {
+export default function ExamTable({ rows, kind = "faskes", pageSize, tools, typeBar = false }: Props) {
   const { columns, grid, cells, href, search } = kinds[kind];
   const radiologi = kind === "antrean" || kind === "riwayatRadiologi";
+  const searchLabel = radiologi ? "Cari ID Rekam Medis atau asal faskes" : "Cari ID Rekam Medis atau nama pasien";
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState(0);
   const [typeFilter, setTypeFilter] = useState(0);
@@ -118,9 +119,9 @@ export default function ExamTable({ rows, kind = "faskes", pageSize, tools = fal
 
   return (
     <>
-      {tools && !radiologi && (
+      {tools === "sort" && (
         <SearchSort
-          searchLabel="Cari ID Rekam Medis atau nama pasien"
+          searchLabel={searchLabel}
           query={query}
           onQuery={reset(setQuery)}
           sorts={sorts.map((option) => option.label)}
@@ -128,12 +129,13 @@ export default function ExamTable({ rows, kind = "faskes", pageSize, tools = fal
           onSort={reset(setSort)}
         />
       )}
-      {tools && radiologi && (
+      {tools === "filters" && (
         <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
-          <SearchField aria-label="Cari ID Rekam Medis atau asal faskes" value={query} onChange={(e) => reset(setQuery)(e.target.value)} />
+          <SearchField aria-label={searchLabel} value={query} onChange={(e) => reset(setQuery)(e.target.value)} />
           <Dropdown label="Jenis Pemeriksaan" options={typeOptions} value={typeFilter} onChange={reset(setTypeFilter)} />
           <Dropdown label="Tanggal" options={sorts.slice(0, 2).map((option) => option.label)} value={sort} onChange={reset(setSort)} />
-          {kind === "riwayatRadiologi" && (
+          {/* Verified lists only */}
+          {kind !== "antrean" && (
             <Dropdown label="Hasil Verifikasi" options={resultOptions} value={resultFilter} onChange={reset(setResultFilter)} />
           )}
         </div>

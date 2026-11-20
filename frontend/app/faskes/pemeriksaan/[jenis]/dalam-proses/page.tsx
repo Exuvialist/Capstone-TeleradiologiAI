@@ -16,7 +16,7 @@ export default async function DalamProsesPage({ params }: PageProps<"/faskes/pem
   return (
     <PageShell crumbs={["Detail Pemeriksaan", `${exam.label} - Dalam Proses`]}>
       <ExamTabs exam={exam} active="dalam-proses" />
-      <ExamTable rows={exams.filter((e) => e.type === exam.slug && !e.verifiedAt)} pageSize={10} tools />
+      <ExamTable rows={exams.filter((e) => e.type === exam.slug && !e.verifiedAt)} pageSize={10} tools="sort" />
     </PageShell>
   );
 }

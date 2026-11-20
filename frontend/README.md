@@ -169,7 +169,7 @@ The dashboards and Statistika tab compute everything **in the browser** from the
 Today (all dummy, nothing secure), everything is in `app/login/actions.ts`:
 
 - `accounts`: the two dummy accounts plus any made on `/daftar`, **kept in the dev server's memory** (gone on restart). Passwords are stored as plain text, which is only acceptable for this dummy.
-- `login()` checks username + password and sets two cookies: httpOnly **`session` = the role** (`faskes` or `radiologi`) and **`name`** = the account's name (the sidebar reads it). `logout()` deletes both; the sidebar's *Log Out* calls it.
+- `login()` checks username + password and sets three cookies: httpOnly **`session` = the role** (`faskes` or `radiologi`), plus **`name`** and **`username`**, which the sidebar's profile menu shows (name, @username, role). `logout()` deletes them; the menu's *Log Out* calls it.
 - `register()` checks: all fields filled, a role picked, no spaces in the username, username not taken, both passwords the same. Then it adds the account and opens `/login`.
 - `proxy.ts` reads `session` on every page request: no valid cookie → `/login`; logged in → only that role's pages (`/faskes/*` or `/radiologi/*`); `/login`, `/daftar` and `/` → the role's dashboard.
 - Every account sees the same dummy exams; only the name in the sidebar changes.
@@ -179,7 +179,7 @@ With the backend:
 1. In `login()` and `register()`, call the backend instead of checking `accounts`; show its error message on failure (the forms already show whatever the action returns as `error`).
 2. Store what the backend returns (session ID or token) in the cookie instead of the role, and let `proxy.ts` get the role from it (or keep a second cookie with the role just for redirects).
 3. Every API call sends the session/token, and **the backend checks the user and role on every endpoint**. `proxy.ts` only decides which page to show; it is not security.
-4. Take the name from the backend (`GET /me`, or its login response) instead of the `name` cookie.
+4. Take the name and username from the backend (`GET /me`, or its login response) instead of the `name` / `username` cookies.
 
 ### Reads: where dummy data comes in
 
@@ -193,7 +193,7 @@ With the backend:
 | `app/radiologi/antrean/[id]/page.tsx`, `riwayat/[id]/page.tsx` | `radiologistExams` (one by `id`) | one exam by ID |
 | `components/Analytics.tsx` (client) | `exams`, or the radiologist's cases via `useRadiologistExams()` | exams for the role and date range, or ready-made numbers |
 | `components/VerificationProvider.tsx` (client) | `radiologistExams` + verifications made in the browser | the logged-in radiologist's exams |
-| `components/Sidebar.tsx` | the `name` cookie, falling back to "Faskes 3T" / "Dr. Shinyu" | the logged-in user (`/me`) |
+| `components/Sidebar.tsx` | the `name` / `username` cookies, falling back to the dummy accounts | the logged-in user (`/me`) |
 | `components/DraftProvider.tsx` (client) | drafts made in the browser | the faskes' drafts |
 
 Client components can't read server data directly: either pass the data from the server `page.tsx` as props (as the detail and table pages already do), or fetch it in the client.
@@ -202,9 +202,9 @@ Client components can't read server data directly: either pass the data from the
 
 | Action | Where | Today | Should send |
 |---|---|---|---|
-| **Mulai Analisis** (create exam + run AI) | `buat/BuatForm.tsx` | removes the draft being continued and opens the dummy exam `<prefix>-0123`. The form values (including the picked files) are in `useDrafts(type).form` (`components/DraftProvider.tsx`) | type (from the URL), `medicalRecordNo`, `patientName`, birth date (`day`, `month`, `year`), `gender`, `symptoms`, `files`. Then open `/faskes/pemeriksaan/<jenis>/<new id>` |
+| **Mulai Analisis** (create exam + run AI) | `buat/BuatForm.tsx` | shows the "Menganalisis Citra" pop-up with a progress bar that fills in **3 seconds (simulated)** (`AnalysisProgress`), then removes the draft being continued and opens the dummy exam `<prefix>-0123`. The form values (including the picked files) are in `useDrafts(type).form` (`components/DraftProvider.tsx`) | type (from the URL), `medicalRecordNo`, `patientName`, birth date (`day`, `month`, `year`), `gender`, `symptoms`, `files`. Keep the pop-up open while the API works (real upload/AI progress if the API reports it), then open `/faskes/pemeriksaan/<jenis>/<new id>` |
 | **Simpan Draft** / **Hapus Draft** | `buat/BuatForm.tsx` → `save()` / `discard()` | `components/DraftProvider.tsx`, in the browser until refresh | the form values (create or update the draft) / the draft ID to delete |
-| **Manual Assignment** | `assign/AssignView.tsx` → `assign(exam.id, doctor.name)` | `components/AssignmentProvider.tsx`, in the browser until refresh | exam ID + radiologist |
+| **Manual Assignment** | `assign/AssignView.tsx` → "Assign" on a card → confirmation pop-up → `assign(exam.id, doctor)` | `components/AssignmentProvider.tsx`, in the browser until refresh | exam ID + radiologist |
 | **Automatic Assignment** | `[id]/DetailView.tsx` → `assign(exam.id, null)` | same provider | exam ID, "pick a doctor for me" |
 | **Konfirmasi Keputusan** | `components/VerifyView.tsx` → `verify(…)` | `components/VerificationProvider.tsx`, in the browser until refresh, **Radiologi pages only** (the faskes side doesn't see it) | exam ID, `verdictPositive`, `note` (required when the AI result is rejected). The server sets `verifiedAt` |
 
@@ -256,7 +256,10 @@ This Next.js version ships its own docs in `node_modules/next/dist/docs/`; read 
 
 - **Desktop (1440 px) matches Figma.** Content is max 1100 px wide and centered.
 - **Responsive:** below 1024 px the sidebar becomes a drawer (layout button in the top bar). Pages switch layout by the **content width**, not the window: `<main>` is a CSS container and components use Tailwind container variants like `@4xl:flex-row`.
-- **Tables** (`components/ExamTable.tsx`): one component; `kind` picks the column set, rows are a fixed 42 px (two lines, text centered), and tables scroll sideways on narrow screens.
+- **Tables** (`components/ExamTable.tsx`): one component; `kind` picks the column set, `tools` adds search + a sort icon (`"sort"`: Faskes Dalam Proses / Terverifikasi) or search + filter buttons (`"filters"`: Faskes Riwayat, Radiologi Antrean / Riwayat). Rows are a fixed 42 px (two lines, text centered), and tables scroll sideways on narrow screens.
 - **Figma borders:** buttons and fields draw their border inside the padding (`p-[7px]` + `border` = Figma's 8 px); panels and info boxes add it outside (`p-3` + `border`).
+- **Pop-ups** use `components/Modal.tsx` (a native `<dialog>`: dark backdrop, Escape / backdrop click close it when it has `onClose`).
+- **Filter buttons** (`components/Dropdown.tsx`) show the chosen option, or their own label while the first (default) option is chosen.
+- **Charts** show a tooltip with each exam type's count on hover (or tap) of a day / month / year.
 - **Export Laporan** (`laporan/Report.tsx`) uses the browser's print window ("Save as PDF"); it opens by itself once the images have loaded. When printing, the sidebar and top bar are hidden (`print:hidden`) and the page is A4 (`@page` in `app/globals.css`).
 - `roadmap.md` lists every decision (behavior, labels, what each button does).

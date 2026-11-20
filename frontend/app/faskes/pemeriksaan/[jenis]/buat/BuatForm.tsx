@@ -1,11 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { Download, Image as ImageIcon, Info, Trash2, UploadCloud } from "react-feather";
 import Button from "@/components/Button";
 import { useDrafts } from "@/components/DraftProvider";
 import { field, label } from "@/components/fieldStyles";
+import Modal from "@/components/Modal";
 
 // Figma Desktop-2 124:10896 (empty) and Desktop-3 125:11758 (filled, files uploaded).
 // The values live in DraftProvider, so "Simpan Draft" can save them and a draft can be continued here.
@@ -13,11 +14,43 @@ const panel = "rounded-lg border border-neutral-300 p-3";
 
 type Props = { type: string; detailHref: string; draftsHref: string };
 
+// "Mulai Analisis" pop-up: a progress bar that fills in 3 seconds (simulated until the backend runs the AI), then calls onDone.
+function AnalysisProgress({ onDone }: { onDone: () => void }) {
+  const [progress, setProgress] = useState(0);
+  const done = useEffectEvent(onDone);
+
+  useEffect(() => {
+    const start = Date.now();
+    const timer = setInterval(() => {
+      const value = Math.min(100, Math.round(((Date.now() - start) / 3000) * 100));
+      setProgress(value);
+      if (value === 100) {
+        clearInterval(timer);
+        done();
+      }
+    }, 50);
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <Modal title="Menganalisis Citra">
+      <p>AI sedang menganalisis citra pasien. Mohon tunggu.</p>
+      <div className="flex items-center gap-3">
+        <div role="progressbar" aria-valuenow={progress} aria-label="Progres analisis" className="h-2 flex-1 overflow-hidden rounded-full bg-neutral-200">
+          <div className="h-full rounded-full bg-neutral-800" style={{ width: `${progress}%` }} />
+        </div>
+        <span className="w-10 text-right">{progress}%</span>
+      </div>
+    </Modal>
+  );
+}
+
 export default function BuatForm({ type, detailHref, draftsHref }: Props) {
   const router = useRouter();
   const { form, update, save, discard } = useDrafts(type);
   const { files } = form;
   const picker = useRef<HTMLInputElement>(null);
+  const [analyzing, setAnalyzing] = useState(false);
 
   const addFiles = (list: FileList | null) => {
     const picked = Array.from(list ?? []); // copy now: the input gets cleared right after
@@ -199,18 +232,25 @@ export default function BuatForm({ type, detailHref, draftsHref }: Props) {
         >
           Simpan Draft
         </Button>
-        {/* Opens the dummy exam until the backend creates one; a continued draft is removed */}
+        {/* Shows the analysis pop-up, then opens the dummy exam until the backend creates one; a continued draft is removed */}
         <Button
           variant="neutral"
-          onClick={() => {
-            discard();
-            router.push(detailHref);
-          }}
+          onClick={() => setAnalyzing(true)}
           className="flex-1 justify-center @md:w-[188px] @md:flex-none"
         >
           Mulai Analisis
         </Button>
       </div>
+
+      {analyzing && (
+        <AnalysisProgress
+          onDone={() => {
+            discard();
+            setAnalyzing(false); // pages stay mounted in the background, so close it before leaving
+            router.push(detailHref);
+          }}
+        />
+      )}
     </>
   );
 }

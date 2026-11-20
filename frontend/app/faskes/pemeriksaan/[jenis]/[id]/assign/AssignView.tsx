@@ -6,6 +6,7 @@ import { useAssignments } from "@/components/AssignmentProvider";
 import BackButton from "@/components/BackButton";
 import Button from "@/components/Button";
 import { InfoBox, InfoRow } from "@/components/InfoBox";
+import Modal from "@/components/Modal";
 import SearchSort from "@/components/SearchSort";
 import { radiologists, type Exam } from "@/data/mock";
 
@@ -25,6 +26,7 @@ export default function AssignView({ exam, examLabel, detailHref }: { exam: Exam
   const { assign } = useAssignments();
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState(0);
+  const [confirming, setConfirming] = useState<string | null>(null); // doctor name waiting for confirmation
 
   const doctors = radiologists
     .filter((d) => d.name.toLowerCase().includes(query.toLowerCase()))
@@ -84,18 +86,37 @@ export default function AssignView({ exam, examLabel, detailHref }: { exam: Exam
                 </span>
               </div>
             </div>
+            <Button variant="neutral" onClick={() => setConfirming(doctor.name)}>
+              Assign
+            </Button>
+          </div>
+        ))}
+      </div>
+
+      {/* Confirm before assigning */}
+      {confirming && (
+        <Modal title="Konfirmasi Assignment" onClose={() => setConfirming(null)}>
+          <p>
+            Assign kasus <span className="font-bold">#{exam.id}</span> ({exam.patientName}) ke{" "}
+            <span className="font-bold">{confirming}</span>?
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setConfirming(null)}>
+              Batal
+            </Button>
             <Button
               variant="neutral"
               onClick={() => {
-                assign(exam.id, doctor.name);
+                assign(exam.id, confirming);
+                setConfirming(null); // pages stay mounted in the background, so close it before leaving
                 router.push(detailHref);
               }}
             >
               Assign
             </Button>
           </div>
-        ))}
-      </div>
+        </Modal>
+      )}
     </>
   );
 }

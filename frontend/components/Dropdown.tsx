@@ -5,6 +5,7 @@ import { ChevronDown } from "react-feather";
 import Button from "@/components/Button";
 
 // Outline button "Label ⌄" that opens a menu (same light-blue style as the sort menu). Desktop-20 / -31 filters.
+// The button shows the chosen option, or `label` while the first (default) option is chosen.
 type Props = {
   label: string;
   options: string[];
@@ -18,7 +19,7 @@ export default function Dropdown({ label, options, value, onChange }: Props) {
   return (
     <div className="relative">
       <Button variant="outline" aria-expanded={open} selected={open} onClick={() => setOpen(!open)}>
-        {label}
+        {value === 0 ? label : options[value]}
         <ChevronDown />
       </Button>
       {open && (
