@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useState, useSyncExternalStore, type ReactNode } from "react";
 import { ChevronDown, ChevronUp, Home, Layout, Loader, LogIn, Package } from "react-feather";
 import { logout } from "@/app/login/actions";
 import Button from "@/components/Button";
@@ -12,7 +12,6 @@ import { examTypes } from "@/data/mock";
 const roles = {
   faskes: {
     name: "Faskes 3T",
-    initial: "F",
     links: [
       { href: "/faskes/dashboard", label: "Dashboard", icon: Home },
       { href: "/faskes/riwayat", label: "Riwayat", icon: Package },
@@ -20,7 +19,6 @@ const roles = {
   },
   radiologi: {
     name: "Dr. Shinyu",
-    initial: "S",
     links: [
       { href: "/radiologi/dashboard", label: "Dashboard", icon: Home },
       { href: "/radiologi/antrean", label: "Antrean Verifikasi", icon: Loader },
@@ -28,6 +26,13 @@ const roles = {
     ],
   },
 };
+
+// The logged-in account's name, from the "name" cookie set at login. Falls back to the role's dummy name.
+const readName = () => {
+  const match = document.cookie.match(/(?:^|; )name=([^;]*)/);
+  return match ? decodeURIComponent(match[1]) : null;
+};
+const noSubscribe = () => () => {};
 
 const tile = "flex shrink-0 items-center justify-center rounded-md bg-neutral-800 font-bold text-neutral-100";
 const menuItem = "flex w-full cursor-pointer items-center gap-2.5 rounded-md p-2 hover:bg-primary-200 [&_svg]:size-5";
@@ -56,7 +61,9 @@ export default function Sidebar({ role }: { role: keyof typeof roles }) {
   const collapsed = rail && !open; // the drawer is always full width
   const [groupOpen, setGroupOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
-  const { name, initial, links } = roles[role];
+  const name = useSyncExternalStore(noSubscribe, readName, () => null) ?? roles[role].name;
+  const initial = name.replace(/^dr\.?\s*/i, "").charAt(0).toUpperCase(); // "Dr. Shinyu" → S, as in Figma
+  const { links } = roles[role];
 
   const navLink = ({ href, label, icon: Icon }: (typeof links)[number]) => (
     <Button
@@ -74,11 +81,11 @@ export default function Sidebar({ role }: { role: keyof typeof roles }) {
 
   return (
     <>
-      {open && <div className="fixed inset-0 z-20 bg-neutral-1000/30 lg:hidden" onClick={() => setOpen(false)} />}
+      {open && <div className="fixed inset-0 z-20 bg-neutral-1000/30 lg:hidden print:hidden" onClick={() => setOpen(false)} />}
       {/* Drawer below 1024px (closes when a link is clicked), fixed column from 1024px */}
       <aside
         onClick={(e) => (e.target as HTMLElement).closest("a") && setOpen(false)}
-        className={`fixed inset-y-0 left-0 z-30 flex h-screen shrink-0 flex-col border-r border-neutral-300 bg-neutral-100 transition-transform lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 ${open ? "" : "-translate-x-full"} ${collapsed ? "w-[60px]" : "w-[300px]"}`}
+        className={`fixed inset-y-0 left-0 z-30 flex h-screen shrink-0 flex-col print:hidden border-r border-neutral-300 bg-neutral-100 transition-transform lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 ${open ? "" : "-translate-x-full"} ${collapsed ? "w-[60px]" : "w-[300px]"}`}
       >
         {/* pr-[11px] + 1px border = Figma's 12px */}
         <div

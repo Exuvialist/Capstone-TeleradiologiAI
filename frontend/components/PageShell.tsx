@@ -8,7 +8,7 @@ import { SidebarButton } from "@/components/Sidebar";
 export default function PageShell({ crumbs, children }: { crumbs: string[]; children?: ReactNode }) {
   return (
     <>
-      <header className="h-16 border-b border-neutral-300">
+      <header className="h-16 border-b border-neutral-300 print:hidden">
         <div className="mx-auto flex h-full max-w-[1140px] items-center justify-between gap-3 pt-px pr-3.5 pl-5">
           {/* Below 1024px: button that opens the sidebar drawer */}
           <SidebarButton />
@@ -26,7 +26,7 @@ export default function PageShell({ crumbs, children }: { crumbs: string[]; chil
           </div>
         </div>
       </header>
-      <main className="@container mx-auto max-w-[1140px] p-5">{children}</main>
+      <main className="@container mx-auto max-w-[1140px] p-5 print:p-0">{children}</main>
     </>
   );
 }

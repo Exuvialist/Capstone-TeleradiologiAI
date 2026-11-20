@@ -121,3 +121,9 @@
 @theme inline {
   --font-sans: var(--font-clarity-city), system-ui, sans-serif;
 }
+
+/* Printing ("Export Laporan"): A4 pages */
+@page {
+  size: A4;
+  margin: 16mm;
+}

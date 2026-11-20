@@ -27,8 +27,11 @@ export default function ExamTabs({ exam, active }: { exam: ExamType; active: str
             </Button>
           ))}
         </div>
-        {/* Does nothing for now */}
-        <Button variant="outline" className="shrink-0">
+        <Button
+          variant={active === "drafts" ? "neutral" : "outline"}
+          href={`/faskes/pemeriksaan/${exam.slug}/drafts`}
+          className="shrink-0"
+        >
           Drafts Pemeriksaan
         </Button>
       </div>

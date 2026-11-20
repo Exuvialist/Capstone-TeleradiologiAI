@@ -2,7 +2,7 @@
 
 Web app where a **Faskes 3T** (remote health facility) uploads a patient's X-ray, gets an AI result, and sends the case to a **Dokter Radiologi**, who accepts or rejects the AI result. Three exam types: Pneumonia, Kanker Tulang, Tumor Otak.
 
-This folder is **frontend only**. Every screen works on **dummy data** in `data/mock.ts`, login uses two dummy accounts, and anything you "save" (assignments, verifications) lives in the browser until refresh. The section [Connecting the backend](#connecting-the-backend) lists exactly what to replace.
+This folder is **frontend only**. Every screen works on **dummy data** in `data/mock.ts`, accounts live in the dev server's memory, and anything else you "save" (drafts, assignments, verifications) lives in the browser until refresh. The section [Connecting the backend](#connecting-the-backend) lists exactly what to replace.
 
 Design reference: the Figma file *UI Design | Capstone*, plus `documentation.md` (colors, type, spacing, components) and `roadmap.md` (every decision made while building).
 
@@ -27,12 +27,12 @@ Open http://localhost:3000. It redirects to the login page.
 | `npm start` | Runs the production build |
 | `npm run lint` | ESLint |
 
-- **Log in** with a dummy account. The account decides the role; to switch role, *Log Out* (click the name at the bottom of the sidebar) and log in with the other account.
+- **Log in** with a dummy account, or make one on *Daftar* (`/daftar`, linked from the login page). The account decides the role; to switch role, *Log Out* (click the name at the bottom of the sidebar) and log in with another account. New accounts disappear when `npm run dev` restarts.
 
-  | Role | Email | Password |
+  | Role | Username | Password |
   |---|---|---|
-  | Faskes 3T | `faskes@teleradiologi.id` | `faskes123` |
-  | Dokter Radiologi (Dr. Shinyu) | `dokter@teleradiologi.id` | `dokter123` |
+  | Faskes 3T | `faskes3t` | `faskes123` |
+  | Dokter Radiologi (Dr. Shinyu) | `drshinyu` | `dokter123` |
 - **Sample image:** every dummy exam shows `public/sample/xray.jpg`. If the file is missing, the image viewer is an empty grey box.
 
 ---
@@ -54,9 +54,10 @@ frontend/
 ├─ app/
 │  ├─ layout.tsx, globals.css        # font, design tokens
 │  ├─ page.tsx                       # "/" → /login (proxy.ts sends logged-in users to their dashboard)
-│  ├─ login/                         # page.tsx, LoginForm.tsx, actions.ts (login / logout, dummy accounts)
+│  ├─ login/                         # page.tsx, LoginForm.tsx, actions.ts (accounts, login / register / logout)
+│  ├─ daftar/                        # page.tsx + RegisterForm.tsx (sign-up)
 │  ├─ faskes/                        # role: Faskes 3T
-│  │  ├─ layout.tsx                  # sidebar + AssignmentProvider
+│  │  ├─ layout.tsx                  # sidebar + AssignmentProvider + DraftProvider
 │  │  ├─ dashboard/page.tsx
 │  │  ├─ riwayat/page.tsx
 │  │  └─ pemeriksaan/[jenis]/        # jenis = pneumonia | kanker-tulang | tumor-otak
@@ -64,8 +65,10 @@ frontend/
 │  │     ├─ buat/page.tsx + BuatForm.tsx
 │  │     ├─ dalam-proses/page.tsx
 │  │     ├─ terverifikasi/page.tsx
+│  │     ├─ drafts/page.tsx + DraftList.tsx
 │  │     └─ [id]/page.tsx + DetailView.tsx
-│  │        └─ assign/page.tsx + AssignView.tsx
+│  │        ├─ assign/page.tsx + AssignView.tsx
+│  │        └─ laporan/page.tsx + Report.tsx
 │  └─ radiologi/                     # role: Dokter Radiologi
 │     ├─ layout.tsx                  # sidebar + VerificationProvider
 │     ├─ dashboard/page.tsx
@@ -85,14 +88,17 @@ Pages (`page.tsx`) are server components. Anything interactive is a `"use client
 
 | Route | Screen | Figma frame | Main file |
 |---|---|---|---|
-| `/login` | Login (email + password) | none, built from the design system | `app/login/LoginForm.tsx` |
+| `/login` | Login (username + password) | none, built from the design system | `app/login/LoginForm.tsx` |
+| `/daftar` | Create an account (name, username, role, password) | none | `app/daftar/RegisterForm.tsx` |
 | `/faskes/dashboard` | Faskes dashboard: chart, numbers, latest verified cases | Desktop-12 | `components/Analytics.tsx` |
 | `/faskes/pemeriksaan/[jenis]/statistika` | Statistika tab for one exam type | Desktop-8 | `components/Analytics.tsx` |
 | `/faskes/pemeriksaan/[jenis]/buat` | Buat Pemeriksaan: patient form + upload | Desktop-2, -3 | `buat/BuatForm.tsx` |
 | `/faskes/pemeriksaan/[jenis]/dalam-proses` | Exams not verified yet | Desktop-9 | `components/ExamTable.tsx` |
 | `/faskes/pemeriksaan/[jenis]/terverifikasi` | Verified exams | Desktop-10 | `components/ExamTable.tsx` |
+| `/faskes/pemeriksaan/[jenis]/drafts` | Drafts Pemeriksaan: saved drafts of this type | none | `drafts/DraftList.tsx` |
 | `/faskes/pemeriksaan/[jenis]/[id]` | Exam detail, 4 states (see [Exam status](#exam-status)) | Desktop-4, -6, -15, -14 | `[id]/DetailView.tsx` |
 | `/faskes/pemeriksaan/[jenis]/[id]/assign` | Manual Assignment: pick a radiologist | Desktop-11 | `assign/AssignView.tsx` |
+| `/faskes/pemeriksaan/[jenis]/[id]/laporan` | Export Laporan: printable report of a verified exam | none | `laporan/Report.tsx` |
 | `/faskes/riwayat` | All verified exams | Desktop-16 | `components/ExamTable.tsx` |
 | `/radiologi/dashboard` | Radiologist dashboard | Desktop-17 | `components/Analytics.tsx` |
 | `/radiologi/antrean` | Antrean Verifikasi: the radiologist's queue | Desktop-20 | `components/RadiologiList.tsx` |
@@ -160,18 +166,20 @@ The dashboards and Statistika tab compute everything **in the browser** from the
 
 ### Login
 
-Today (all dummy, nothing secure):
+Today (all dummy, nothing secure), everything is in `app/login/actions.ts`:
 
-- `app/login/actions.ts` → `login()` checks the email and password against the two dummy accounts and sets an httpOnly cookie **`session` = the role** (`faskes` or `radiologi`). `logout()` deletes it. The sidebar's *Log Out* calls `logout()`.
-- `proxy.ts` reads that cookie on every page request: no valid cookie → `/login`; logged in → only that role's pages (`/faskes/*` or `/radiologi/*`); `/login` and `/` → the role's dashboard.
-- Names on screen ("Faskes 3T", "Dr. Shinyu") are hard-coded per role.
+- `accounts`: the two dummy accounts plus any made on `/daftar`, **kept in the dev server's memory** (gone on restart). Passwords are stored as plain text, which is only acceptable for this dummy.
+- `login()` checks username + password and sets two cookies: httpOnly **`session` = the role** (`faskes` or `radiologi`) and **`name`** = the account's name (the sidebar reads it). `logout()` deletes both; the sidebar's *Log Out* calls it.
+- `register()` checks: all fields filled, a role picked, no spaces in the username, username not taken, both passwords the same. Then it adds the account and opens `/login`.
+- `proxy.ts` reads `session` on every page request: no valid cookie → `/login`; logged in → only that role's pages (`/faskes/*` or `/radiologi/*`); `/login`, `/daftar` and `/` → the role's dashboard.
+- Every account sees the same dummy exams; only the name in the sidebar changes.
 
 With the backend:
 
-1. In `login()`, call the backend's login with the email and password; show its error message on failure (the form already shows whatever `login()` returns as `error`).
+1. In `login()` and `register()`, call the backend instead of checking `accounts`; show its error message on failure (the forms already show whatever the action returns as `error`).
 2. Store what the backend returns (session ID or token) in the cookie instead of the role, and let `proxy.ts` get the role from it (or keep a second cookie with the role just for redirects).
 3. Every API call sends the session/token, and **the backend checks the user and role on every endpoint**. `proxy.ts` only decides which page to show; it is not security.
-4. Replace the hard-coded names with `GET /me`.
+4. Take the name from the backend (`GET /me`, or its login response) instead of the `name` cookie.
 
 ### Reads: where dummy data comes in
 
@@ -185,7 +193,8 @@ With the backend:
 | `app/radiologi/antrean/[id]/page.tsx`, `riwayat/[id]/page.tsx` | `radiologistExams` (one by `id`) | one exam by ID |
 | `components/Analytics.tsx` (client) | `exams`, or the radiologist's cases via `useRadiologistExams()` | exams for the role and date range, or ready-made numbers |
 | `components/VerificationProvider.tsx` (client) | `radiologistExams` + verifications made in the browser | the logged-in radiologist's exams |
-| `components/Sidebar.tsx` | names "Faskes 3T" / "Dr. Shinyu" | the logged-in user (`/me`) |
+| `components/Sidebar.tsx` | the `name` cookie, falling back to "Faskes 3T" / "Dr. Shinyu" | the logged-in user (`/me`) |
+| `components/DraftProvider.tsx` (client) | drafts made in the browser | the faskes' drafts |
 
 Client components can't read server data directly: either pass the data from the server `page.tsx` as props (as the detail and table pages already do), or fetch it in the client.
 
@@ -193,7 +202,8 @@ Client components can't read server data directly: either pass the data from the
 
 | Action | Where | Today | Should send |
 |---|---|---|---|
-| **Mulai Analisis** (create exam + run AI) | `buat/BuatForm.tsx` | a link to the dummy exam `<prefix>-0123`; **the form inputs aren't collected** (no state / `name` attributes) and the picked files sit in the `files` state | type (from the URL), `medicalRecordNo`, `patientName`, `birthDate`, `gender`, `symptoms`, the files. Then open `/faskes/pemeriksaan/<jenis>/<new id>` |
+| **Mulai Analisis** (create exam + run AI) | `buat/BuatForm.tsx` | removes the draft being continued and opens the dummy exam `<prefix>-0123`. The form values (including the picked files) are in `useDrafts(type).form` (`components/DraftProvider.tsx`) | type (from the URL), `medicalRecordNo`, `patientName`, birth date (`day`, `month`, `year`), `gender`, `symptoms`, `files`. Then open `/faskes/pemeriksaan/<jenis>/<new id>` |
+| **Simpan Draft** / **Hapus Draft** | `buat/BuatForm.tsx` → `save()` / `discard()` | `components/DraftProvider.tsx`, in the browser until refresh | the form values (create or update the draft) / the draft ID to delete |
 | **Manual Assignment** | `assign/AssignView.tsx` → `assign(exam.id, doctor.name)` | `components/AssignmentProvider.tsx`, in the browser until refresh | exam ID + radiologist |
 | **Automatic Assignment** | `[id]/DetailView.tsx` → `assign(exam.id, null)` | same provider | exam ID, "pick a doctor for me" |
 | **Konfirmasi Keputusan** | `components/VerifyView.tsx` → `verify(…)` | `components/VerificationProvider.tsx`, in the browser until refresh, **Radiologi pages only** (the faskes side doesn't see it) | exam ID, `verdictPositive`, `note` (required when the AI result is rejected). The server sets `verifiedAt` |
@@ -206,7 +216,8 @@ A starting point, not a contract; adjust freely as long as the screens get the f
 
 | Method | Path | Body / query | Returns |
 |---|---|---|---|
-| `POST` | `/auth/login` | `{ email, password }` | session / token + `{ role, name }` |
+| `POST` | `/auth/login` | `{ username, password }` | session / token + `{ role, name }` |
+| `POST` | `/auth/register` | `{ name, username, role, password }` | `201`, or an error ("Username sudah dipakai", …) |
 | `POST` | `/auth/logout` | | |
 | `GET` | `/me` | | `{ role: "faskes" \| "radiologi", name }` |
 | `GET` | `/exams` | `?type=&verified=&from=&to=` (scoped to the logged-in faskes or radiologist) | `Exam[]` |
@@ -215,6 +226,7 @@ A starting point, not a contract; adjust freely as long as the screens get the f
 | `POST` | `/exams/{id}/assign` | `{ radiologist: string \| null }` (`null` = automatic) | `Exam` |
 | `POST` | `/exams/{id}/verify` | `{ verdictPositive: boolean, note: string \| null }` | `Exam` |
 | `GET` | `/radiologists` | | `{ name, experience, pending }[]` (better with an `id`) |
+| `GET` / `POST` / `PUT` / `DELETE` | `/drafts`, `/drafts/{id}` | `?type=`; the form fields + files | drafts: the form fields + `id`, `savedAt` |
 | `GET` | `/stats` (optional) | `?type=&from=&to=&group=day\|month\|year` | chart groups + the dashboard numbers |
 
 Upload rules shown on Buat Pemeriksaan: txt, docx, pdf, jpeg, xlsx, max 50 MB (not enforced in the frontend yet). Keep the API URL in `.env.local` (already git-ignored), e.g. `NEXT_PUBLIC_API_URL=…`.
@@ -228,14 +240,13 @@ This Next.js version ships its own docs in `node_modules/next/dist/docs/`; read 
 - Pages that read the URL (`params`) export `instant = false`, which silences the instant-navigation warning. Keep it, or switch to `<Suspense>` + a loading design.
 - **Mutations:** Server Functions (`'use server'`) can be called straight from the existing click handlers, then refresh the data with `revalidatePath` (`07-mutating-data.md`).
 - **Images from the API:** the viewer uses `next/image`, so add the image host to `images.remotePatterns` in `next.config.ts` (`12-images.md`).
-- **`proxy.ts`** is Next.js 16's name for middleware. It only runs on `/`, `/login`, `/faskes/*` and `/radiologi/*` (its `matcher`), so fonts and images aren't blocked.
+- **`proxy.ts`** is Next.js 16's name for middleware. It only runs on `/`, `/login`, `/daftar`, `/faskes/*` and `/radiologi/*` (its `matcher`), so fonts and images aren't blocked.
 - **Leave the rest of `next.config.ts` as it is**: the `turbopack` rule is what makes Tailwind work.
 
 ### Not implemented yet (does nothing)
 
-- Real login: accounts, "forgot password", registering new users (only the two dummy accounts exist)
+- Real accounts (they live in the dev server's memory) and "forgot password"
 - Top-bar search bar
-- "Simpan Draft" and "Drafts Pemeriksaan" (no drafts yet)
 - Download icon in an uploaded file's row; the 50 MB limit
 - Loading and empty states (no design yet): an empty search shows just the table header
 
@@ -247,4 +258,5 @@ This Next.js version ships its own docs in `node_modules/next/dist/docs/`; read 
 - **Responsive:** below 1024 px the sidebar becomes a drawer (layout button in the top bar). Pages switch layout by the **content width**, not the window: `<main>` is a CSS container and components use Tailwind container variants like `@4xl:flex-row`.
 - **Tables** (`components/ExamTable.tsx`): one component; `kind` picks the column set, rows are a fixed 42 px (two lines, text centered), and tables scroll sideways on narrow screens.
 - **Figma borders:** buttons and fields draw their border inside the padding (`p-[7px]` + `border` = Figma's 8 px); panels and info boxes add it outside (`p-3` + `border`).
+- **Export Laporan** (`laporan/Report.tsx`) uses the browser's print window ("Save as PDF"); it opens by itself once the images have loaded. When printing, the sidebar and top bar are hidden (`print:hidden`) and the page is A4 (`@page` in `app/globals.css`).
 - `roadmap.md` lists every decision (behavior, labels, what each button does).

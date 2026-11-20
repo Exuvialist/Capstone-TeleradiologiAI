@@ -112,6 +112,14 @@ export default function DetailView({ exam, examLabel, href }: { exam: Exam; exam
         </section>
       </div>
 
+      {state === "verified" && (
+        <div className="sticky bottom-5 mt-auto flex justify-end gap-[9px] pt-5">
+          {/* Opens the printable report (save it as PDF from the print window) */}
+          <Button variant="neutral" href={`${href}/laporan`} className="flex-1 justify-center @md:w-[188px] @md:flex-none">
+            Export Laporan
+          </Button>
+        </div>
+      )}
       {state === "ai" && (
         <div className="sticky bottom-5 mt-auto flex justify-end gap-[9px] pt-5">
           <Button variant="outline" href={`${href}/assign`} className="flex-1 justify-center @md:w-[188px] @md:flex-none">

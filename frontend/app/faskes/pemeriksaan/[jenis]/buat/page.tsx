@@ -17,7 +17,11 @@ export default async function BuatPage({ params }: PageProps<"/faskes/pemeriksaa
       {/* Fills the window (minus the 64px top bar and 40px padding) so the footer buttons stay at the bottom */}
       <div className="flex min-h-[calc(100vh-104px)] flex-col">
         <ExamTabs exam={exam} active="buat" />
-        <BuatForm detailHref={`/faskes/pemeriksaan/${exam.slug}/${exam.prefix}-0123`} />
+        <BuatForm
+          type={exam.slug}
+          detailHref={`/faskes/pemeriksaan/${exam.slug}/${exam.prefix}-0123`}
+          draftsHref={`/faskes/pemeriksaan/${exam.slug}/drafts`}
+        />
       </div>
     </PageShell>
   );
