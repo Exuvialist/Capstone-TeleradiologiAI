@@ -1,0 +1,5 @@
+export { DokterShell } from './DokterShell'
+export { default as RadiologDashboard, DokterDashboard } from './RadiologDashboard'
+export { default as RadiologAntrean, DokterAntrean } from './RadiologAntrean'
+export { default as RadiologVerifikasi, DokterVerifikasi } from './RadiologVerifikasi'
+export { default as RadiologRiwayat, DokterRiwayat } from './RadiologRiwayat'

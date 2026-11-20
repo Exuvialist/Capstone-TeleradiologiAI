@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { ChevronLeft, Filter, Search, UserCheck } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { usePneumonia, type Doctor } from '../context/PneumoniaContext'
-import { getModuleInfo } from '../components/PneumoniaTabs'
+import { usePneumonia, type Doctor } from '../../context/PneumoniaContext'
+import { getModuleInfo } from '../../components/PneumoniaTabs'
 
 function DoctorCard({
   doc,

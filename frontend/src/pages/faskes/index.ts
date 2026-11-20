@@ -1,0 +1,7 @@
+export { default as Dashboard } from './Dashboard'
+export { default as Statistika } from './Statistika'
+export { default as BuatPemeriksaan } from './BuatPemeriksaan'
+export { default as Detail } from './Detail'
+export { default as Daftar } from './Daftar'
+export { default as ManualAssignment } from './ManualAssignment'
+export { default as Riwayat } from './Riwayat'

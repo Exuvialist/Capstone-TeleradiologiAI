@@ -1,10 +1,10 @@
 import React, { useState, useRef } from 'react'
 import { Download, Image as ImageIcon, Info, Trash2, UploadCloud, Sparkles, Loader2, CheckCircle2 } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import PneumoniaLayout, { getModuleInfo } from '../components/PneumoniaTabs'
-import { PatientCard } from '../components/PatientData'
-import { samplePatient, type Patient } from '../types/patient'
-import { usePneumonia } from '../context/PneumoniaContext'
+import PneumoniaLayout, { getModuleInfo } from '../../components/PneumoniaTabs'
+import { PatientCard } from '../../components/PatientData'
+import { samplePatient, type Patient } from '../../types/patient'
+import { usePneumonia } from '../../context/PneumoniaContext'
 
 export default function BuatPemeriksaan({ filled = false }: { filled?: boolean }) {
   const navigate = useNavigate()

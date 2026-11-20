@@ -28,6 +28,7 @@ export interface PatientRecord {
   verificationNotes?: string
   status: 'draft' | 'menunggu' | 'proses' | 'terverifikasi'
   createdAt: string
+  faskes?: string
 }
 
 export interface Doctor {

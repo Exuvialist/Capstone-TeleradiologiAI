@@ -4,6 +4,20 @@ import { initialPatient } from '../types/patient'
 
 export type { PatientRecord, Doctor }
 
+export type UserRole = 'faskes' | 'radiolog'
+
+export interface AuthUser {
+  role: UserRole
+  name: string
+  username: string
+}
+
+export interface LoginResult {
+  success: boolean
+  role?: UserRole
+  error?: string
+}
+
 export interface ToastMessage {
   id: string
   text: string
@@ -11,6 +25,9 @@ export interface ToastMessage {
 }
 
 export interface PneumoniaContextType {
+  currentUser: AuthUser | null
+  login: (password: string, username?: string) => LoginResult
+  logout: () => void
   cases: PatientRecord[]
   currentCase: PatientRecord
   setCurrentCase: React.Dispatch<React.SetStateAction<PatientRecord>>
@@ -48,105 +65,135 @@ const defaultDoctors: Doctor[] = [
   { id: 'd9', nama: 'Dr. Lina Marlina', pengalaman: '3 Tahun', jumlahKasus: 9, spesialisasi: 'Kedokteran Nuklir & Toraks' },
 ]
 
-const initialCases: PatientRecord[] = [
-  initialPatient,
-  {
-    id: '#PN-0124',
-    nama: 'Ahmad Dani',
-    dd: '14',
-    mm: 'Agt',
-    yyyy: '1982',
-    gender: 'L',
-    gejala: 'Batuk berdahak kecoklatan, demam tinggi 38.5C selama 4 hari.',
-    files: [{ name: 'xray-ahmad-01.jpeg', size: '142.KB', url: '/sample-xray.jpeg' }],
-    aiResult: { diagnosis: 'Pneumonia', confidence: 94, finding: 'Konsolidasi lobaris paru kiri.' },
-    radiologist: 'Dr. Tama',
-    status: 'proses',
-    createdAt: '2026-10-18',
-  },
-  {
-    id: '#PN-0125',
-    nama: 'Siti Nurhaliza',
-    dd: '22',
-    mm: 'Nov',
-    yyyy: '1995',
-    gender: 'P',
-    gejala: 'Sesak napas ringan setelah aktivitas, batuk kering 2 minggu.',
-    files: [{ name: 'xray-siti-01.jpeg', size: '118.KB', url: '/sample-xray.jpeg' }],
-    aiResult: { diagnosis: 'Bukan Pneumonia', confidence: 88, finding: 'Cor dan pulmo dalam batas normal.' },
-    radiologist: 'Dr. Bernard Bear',
-    verificationDate: '19/10/2026',
-    verificationResult: 'Bukan Pneumonia',
-    verificationNotes: 'Tidak tampak infiltrate aktif pada kedua lapang paru.',
-    status: 'terverifikasi',
-    createdAt: '2026-10-19',
-  },
-  {
-    id: '#PN-0126',
-    nama: 'Budi Santoso',
-    dd: '09',
-    mm: 'Jan',
-    yyyy: '1975',
-    gender: 'L',
-    gejala: 'Sesak progresif, nyeri dada saat bernapas dalam, leukositosis.',
-    files: [{ name: 'xray-budi-01.jpeg', size: '135.KB', url: '/sample-xray.jpeg' }],
-    aiResult: { diagnosis: 'Pneumonia', confidence: 91, finding: 'Infiltrat intersisial bilateral.' },
-    radiologist: 'Dr. Tama',
-    status: 'proses',
-    createdAt: '2026-10-19',
-  },
-  {
-    id: '#PN-0127',
-    nama: 'Ratna Sari',
-    dd: '05',
-    mm: 'Mar',
-    yyyy: '2001',
-    gender: 'P',
-    gejala: 'Demam, meriang, batuk berdahak 3 hari.',
-    files: [{ name: 'xray-ratna-01.jpeg', size: '120.KB', url: '/sample-xray.jpeg' }],
-    aiResult: { diagnosis: 'Bukan Pneumonia', confidence: 86, finding: 'Bercak fibrosis lama inaktif.' },
-    radiologist: 'Dr. Sarah Jenkins',
-    verificationDate: '19/10/2026',
-    verificationResult: 'Bukan Pneumonia',
-    verificationNotes: 'Infiltrat aktif disangkal.',
-    status: 'terverifikasi',
-    createdAt: '2026-10-19',
-  },
-  {
-    id: '#KT-0124',
-    nama: 'Nabila Putri',
-    dd: '18',
-    mm: 'Okt',
-    yyyy: '2002',
-    gender: 'P',
-    gejala: 'Nyeri tulang tumpul pada tungkai bawah kanan, teraba massa/pembengkakan lokal sejak 3 minggu.',
-    files: [{ name: 'rontgen-femur-nabila.jpeg', size: '138.KB', url: '/sample-xray.jpeg' }],
-    aiResult: { diagnosis: 'Kanker Tulang (Osteosarcoma)', confidence: 94, finding: 'Lesi osteolitik metafisis distal disertai reaksi periosteal sunburst.' },
-    radiologist: 'Dr. Nadia',
-    verificationDate: '18/10/2026',
-    verificationResult: 'Kanker Tulang Terkonfirmasi',
-    verificationNotes: 'Lesi osteolitik ganas konsisten dengan osteosarkoma tingkat tinggi.',
-    status: 'terverifikasi',
-    createdAt: '2026-10-18',
-  },
-  {
-    id: '#TO-0125',
-    nama: 'Raka Pratama',
-    dd: '17',
-    mm: 'Okt',
-    yyyy: '1997',
-    gender: 'L',
-    gejala: 'Nyeri kepala hebat kronis memberat di pagi hari, muntah proyektil, defisit neurologis fokal.',
-    files: [{ name: 'mri-brain-raka.jpeg', size: '154.KB', url: '/sample-xray.jpeg' }],
-    aiResult: { diagnosis: 'Tumor Otak (Meningioma)', confidence: 92, finding: 'Massa ekstra-aksial lobus frontoparietal berbatas tegas dengan perifocal edema.' },
-    radiologist: 'Dr. Arif',
-    verificationDate: '17/10/2026',
-    verificationResult: 'Tumor Otak Terkonfirmasi',
-    verificationNotes: 'Massa lobus frontoparietal berbatas tegas menyokong kecurigaan meningioma.',
-    status: 'terverifikasi',
-    createdAt: '2026-10-17',
-  },
-]
+export function generateComprehensiveCases(): PatientRecord[] {
+  const result: PatientRecord[] = []
+  let counter = 100
+
+  // 1. Core 100 Cases for 13-19 Okt 2026 matching Figma design specs
+  const dailyPlan = [
+    { date: '2026-10-13', vDate: '13/10/2026', tumor: 3, kanker: 3, pneumonia: 5, pending: 0 },
+    { date: '2026-10-14', vDate: '14/10/2026', tumor: 4, kanker: 2, pneumonia: 6, pending: 0 },
+    { date: '2026-10-15', vDate: '15/10/2026', tumor: 2, kanker: 4, pneumonia: 4, pending: 0 },
+    { date: '2026-10-16', vDate: '16/10/2026', tumor: 5, kanker: 3, pneumonia: 7, pending: 3 },
+    { date: '2026-10-17', vDate: '17/10/2026', tumor: 4, kanker: 5, pneumonia: 6, pending: 4 },
+    { date: '2026-10-18', vDate: '18/10/2026', tumor: 6, kanker: 3, pneumonia: 8, pending: 5 },
+    { date: '2026-10-19', vDate: '19/10/2026', tumor: 6, kanker: 5, pneumonia: 9, pending: 2 },
+  ]
+
+  const firstNames = ['Gracella', 'Ahmad', 'Siti', 'Budi', 'Ratna', 'Nabila', 'Raka', 'Dimas', 'Farhan', 'Dewi', 'Eka', 'Hendra', 'Gita', 'Irfan', 'Joko', 'Kurnia', 'Laras', 'Mega', 'Nugroho', 'Oki', 'Putri', 'Qori', 'Rizky', 'Surya', 'Tri', 'Utami', 'Vina', 'Wawan', 'Yanto', 'Zahra']
+  const lastNames = ['Uhuy', 'Dani', 'Nurhaliza', 'Santoso', 'Sari', 'Putri', 'Pratama', 'Anggara', 'Malik', 'Lestari', 'Saputra', 'Kurnia', 'Gutawa', 'Hakim', 'Anwar', 'Wijaya', 'Kusuma', 'Pertiwi', 'Hidayat', 'Wibowo']
+  const faskesList = ['Faskes Shinyu', 'Faskes Dohoon', 'Faskes Youngjae', 'Faskes Alor', 'Faskes Rote', 'Faskes Sumba']
+
+  dailyPlan.forEach((day) => {
+    const categories: Array<'Tumor Otak' | 'Kanker Tulang' | 'Pneumonia'> = []
+    for (let i = 0; i < day.tumor; i++) categories.push('Tumor Otak')
+    for (let i = 0; i < day.kanker; i++) categories.push('Kanker Tulang')
+    for (let i = 0; i < day.pneumonia; i++) categories.push('Pneumonia')
+
+    let dayPendingLeft = day.pending
+
+    categories.forEach((cat, idx) => {
+      counter++
+      const prefix = cat === 'Tumor Otak' ? 'TO' : cat === 'Kanker Tulang' ? 'KT' : 'PN'
+      const id = counter === 101 ? '#PN-0123' : `#${prefix}-0${counter}`
+      const fn = counter === 101 ? 'Gracella' : firstNames[(counter + idx) % firstNames.length]
+      const ln = counter === 101 ? 'Uhuy' : lastNames[(counter + idx * 3) % lastNames.length]
+      const faskes = counter === 101 ? 'Faskes Shinyu' : faskesList[(counter + idx) % faskesList.length]
+
+      const isPending = dayPendingLeft > 0
+      if (isPending) {
+        dayPendingLeft--
+      }
+
+      // 92% average confidence
+      const conf = 88 + ((counter * 7 + idx * 3) % 9)
+
+      let finding = ''
+      let verResult = ''
+      if (cat === 'Pneumonia') {
+        finding = 'Infiltrasi bercak opasitas konsisten dengan pneumonia lobaris.'
+        verResult = isPending ? '' : (counter % 3 === 0 ? 'Tidak terdeteksi' : 'Terdeteksi')
+      } else if (cat === 'Kanker Tulang') {
+        finding = 'Lesi osteolitik metafisis disertai reaksi periosteal sunburst.'
+        verResult = isPending ? '' : (counter % 4 === 0 ? 'Tidak terdeteksi' : 'Terdeteksi')
+      } else {
+        finding = 'Massa ekstra-aksial lobus frontoparietal berbatas tegas.'
+        verResult = isPending ? '' : 'Terdeteksi'
+      }
+
+      result.push({
+        id,
+        nama: `${fn} ${ln}`,
+        dd: String(1 + (counter % 28)).padStart(2, '0'),
+        mm: 'Mei',
+        yyyy: String(1975 + (counter % 30)),
+        gender: counter % 2 === 0 ? 'L' : 'P',
+        gejala:
+          cat === 'Pneumonia'
+            ? 'Pasien datang dengan keluhan sesak napas yang meningkat sejak [X] hari, batuk berdahak kental, dan demam naik-turun. SpO2: 92%.'
+            : cat === 'Kanker Tulang'
+            ? 'Nyeri tumpul pada tungkai bawah kanan, teraba massa/pembengkakan lokal sejak 3 minggu.'
+            : 'Nyeri kepala hebat kronis memberat di pagi hari, muntah proyektil, defisit neurologis fokal.',
+        files: [{ name: `scan-${prefix.toLowerCase()}-${counter}.jpeg`, size: '134.KB', url: '/sample-xray.jpeg' }],
+        aiResult: {
+          diagnosis: cat,
+          confidence: conf,
+          finding,
+        },
+        radiologist: isPending ? undefined : 'Dr. Shinyu',
+        verificationDate: isPending ? undefined : day.vDate,
+        verificationResult: isPending ? undefined : verResult,
+        verificationNotes: isPending ? undefined : `Evaluasi klinis radiolog terverifikasi: gambaran konsisten dengan status ${verResult}.`,
+        status: isPending ? 'menunggu' : 'terverifikasi',
+        createdAt: day.date,
+        faskes,
+      })
+    })
+  })
+
+  // 2. Historical cases for other months in 2026 and past years (2025, 2024)
+  const historicalDates = [
+    '2026-01-15', '2026-02-10', '2026-03-22', '2026-04-18', '2026-05-12', '2026-06-25',
+    '2026-07-14', '2026-08-08', '2026-09-19', '2026-11-05', '2026-12-12',
+    '2025-04-10', '2025-08-20', '2025-11-15',
+    '2024-03-12', '2024-07-19', '2024-10-25'
+  ]
+
+  historicalDates.forEach((hDate, hIdx) => {
+    counter++
+    const cats: Array<'Tumor Otak' | 'Kanker Tulang' | 'Pneumonia'> = ['Pneumonia', 'Tumor Otak', 'Kanker Tulang']
+    const cat = cats[hIdx % 3]
+    const prefix = cat === 'Tumor Otak' ? 'TO' : cat === 'Kanker Tulang' ? 'KT' : 'PN'
+    const fn = firstNames[hIdx % firstNames.length]
+    const ln = lastNames[hIdx % lastNames.length]
+
+    result.push({
+      id: `#${prefix}-HIST-${counter}`,
+      nama: `${fn} ${ln}`,
+      dd: '10',
+      mm: 'Jan',
+      yyyy: '1985',
+      gender: hIdx % 2 === 0 ? 'L' : 'P',
+      gejala: 'Pemeriksaan radiologi berkala tahunan.',
+      files: [{ name: `hist-${counter}.jpeg`, size: '128.KB', url: '/sample-xray.jpeg' }],
+      aiResult: {
+        diagnosis: cat,
+        confidence: 90 + (hIdx % 6),
+        finding: 'Evaluasi citra klinis rekam medis.',
+      },
+      radiologist: 'Dr. Shinyu',
+      verificationDate: hDate.split('-').reverse().join('/'),
+      verificationResult: 'Terdeteksi',
+      verificationNotes: 'Arsip kasus terverifikasi.',
+      status: 'terverifikasi',
+      createdAt: hDate,
+    })
+  })
+
+  return result
+}
+
+const initialCases: PatientRecord[] = generateComprehensiveCases()
 
 const emptyCase: PatientRecord = {
   id: '#PN-0128',
@@ -165,8 +212,18 @@ const PneumoniaContext = createContext<PneumoniaContextType | undefined>(undefin
 
 export const PneumoniaProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cases, setCases] = useState<PatientRecord[]>(() => {
-    const saved = localStorage.getItem('teleradiologi_cases')
-    return saved ? (JSON.parse(saved) as PatientRecord[]) : initialCases
+    try {
+      const saved = localStorage.getItem('teleradiologi_cases')
+      if (saved) {
+        const parsed = JSON.parse(saved) as PatientRecord[]
+        if (Array.isArray(parsed) && parsed.length >= 50) {
+          return parsed
+        }
+      }
+    } catch {
+      // fallback
+    }
+    return initialCases
   })
 
   const [currentCase, setCurrentCase] = useState<PatientRecord>(() => {
@@ -196,6 +253,52 @@ export const PneumoniaProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [doctors] = useState<Doctor[]>(defaultDoctors)
   const [toasts, setToasts] = useState<ToastMessage[]>([])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+
+  // User authentication state
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(() => {
+    try {
+      const saved = localStorage.getItem('teleradiologi_auth_user')
+      return saved ? (JSON.parse(saved) as AuthUser) : null
+    } catch {
+      return null
+    }
+  })
+
+  const login = (password: string, username = ''): LoginResult => {
+    const p = password.trim().toLowerCase()
+    if (p.includes('faskes')) {
+      const user: AuthUser = {
+        role: 'faskes',
+        name: 'Faskes 3T',
+        username: username.trim() || 'faskes_user',
+      }
+      setCurrentUser(user)
+      localStorage.setItem('teleradiologi_auth_user', JSON.stringify(user))
+      addToast('Berhasil masuk sebagai Tim Faskes 3T.', 'success')
+      return { success: true, role: 'faskes' }
+    }
+    if (p.includes('radiolog') || p.includes('dokter') || p.includes('shinyu')) {
+      const user: AuthUser = {
+        role: 'radiolog',
+        name: 'Dr. Shinyu Sp.Rad',
+        username: username.trim() || 'dr.shinyu',
+      }
+      setCurrentUser(user)
+      localStorage.setItem('teleradiologi_auth_user', JSON.stringify(user))
+      addToast('Berhasil masuk sebagai Dokter Radiologi (Dr. Shinyu).', 'success')
+      return { success: true, role: 'radiolog' }
+    }
+    return {
+      success: false,
+      error: 'Kata sandi tidak dikenali. Gunakan sandi "faskes123" untuk Portal Faskes atau "radiolog123" untuk Portal Dokter Radiologi.',
+    }
+  }
+
+  const logout = () => {
+    setCurrentUser(null)
+    localStorage.removeItem('teleradiologi_auth_user')
+    addToast('Anda telah keluar dari sistem.', 'info')
+  }
 
   useEffect(() => {
     localStorage.setItem('teleradiologi_cases', JSON.stringify(cases))
@@ -371,6 +474,9 @@ export const PneumoniaProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   return (
     <PneumoniaContext.Provider
       value={{
+        currentUser,
+        login,
+        logout,
         cases,
         currentCase,
         setCurrentCase,

@@ -6,7 +6,7 @@ import {
   Calendar,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { usePneumonia, type PatientRecord } from '../context/PneumoniaContext'
+import { usePneumonia, type PatientRecord } from '../../context/PneumoniaContext'
 
 type Period = 'Harian' | 'Bulanan' | 'Tahunan'
 

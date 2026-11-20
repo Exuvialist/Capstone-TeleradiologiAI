@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, Filter, Search } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import PneumoniaLayout, { getModuleInfo } from '../components/PneumoniaTabs'
-import { usePneumonia, type PatientRecord } from '../context/PneumoniaContext'
+import PneumoniaLayout, { getModuleInfo } from '../../components/PneumoniaTabs'
+import { usePneumonia, type PatientRecord } from '../../context/PneumoniaContext'
 
 export default function Daftar({ variant }: { variant: 'proses' | 'terverifikasi' }) {
   const navigate = useNavigate()

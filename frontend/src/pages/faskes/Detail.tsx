@@ -13,10 +13,10 @@ import {
   UserCheck,
 } from 'lucide-react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
-import { PatientCard } from '../components/PatientData'
-import { samplePatient } from '../types/patient'
-import { usePneumonia } from '../context/PneumoniaContext'
-import { getModuleInfo } from '../components/PneumoniaTabs'
+import { PatientCard } from '../../components/PatientData'
+import { samplePatient } from '../../types/patient'
+import { usePneumonia } from '../../context/PneumoniaContext'
+import { getModuleInfo } from '../../components/PneumoniaTabs'
 
 type Variant = 'ai' | 'menunggu' | 'radiolog' | 'hasil'
 

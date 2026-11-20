@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, Download, Calendar } from 'lucide-react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import PneumoniaLayout, { getModuleInfo } from '../components/PneumoniaTabs'
-import { usePneumonia, type PatientRecord } from '../context/PneumoniaContext'
+import PneumoniaLayout, { getModuleInfo } from '../../components/PneumoniaTabs'
+import { usePneumonia, type PatientRecord } from '../../context/PneumoniaContext'
 
 type Period = 'Harian' | 'Bulanan' | 'Tahunan'
 

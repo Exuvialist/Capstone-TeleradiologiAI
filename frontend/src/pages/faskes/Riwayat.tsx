@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { ArrowLeft, ArrowRight, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { usePneumonia, type PatientRecord } from '../context/PneumoniaContext'
+import { usePneumonia, type PatientRecord } from '../../context/PneumoniaContext'
 
 export default function Riwayat() {
   const navigate = useNavigate()

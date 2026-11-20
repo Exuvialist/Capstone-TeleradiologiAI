@@ -4,14 +4,12 @@ import {
   ChevronDown,
   ChevronUp,
   Home,
-  LayoutPanelLeft,
   Package,
   Search,
   CheckCircle,
   AlertCircle,
   Info,
   X,
-  User,
   LogOut,
 } from 'lucide-react'
 import { usePneumonia } from '../context/PneumoniaContext'
@@ -66,7 +64,7 @@ function Crumbs() {
 export default function Shell() {
   const navigate = useNavigate()
   const location = useLocation()
-  const { toasts, removeToast, addToast, sidebarCollapsed, setSidebarCollapsed } = usePneumonia()
+  const { toasts, removeToast, addToast, sidebarCollapsed, logout } = usePneumonia()
 
   const [topSearch, setTopSearch] = useState('')
   const [showProfileMenu, setShowProfileMenu] = useState(false)
@@ -92,22 +90,12 @@ export default function Shell() {
   }
 
   return (
-    <div className={`shell ${sidebarCollapsed ? 'shell-collapsed' : ''}`}>
-      {/* Sidebar Navigation */}
-      <aside className={`sidebar ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+    <div className="shell">
+      {/* Frozen Sidebar Navigation */}
+      <aside className="sidebar">
         <div className="sb-head">
           <div className="logo">T</div>
-          {!sidebarCollapsed && <span className="name">Teleradiologi AI</span>}
-          <button
-            type="button"
-            className="btn btn-outline"
-            aria-label="Toggle sidebar"
-            onClick={() => setSidebarCollapsed((prev) => !prev)}
-            title={sidebarCollapsed ? 'Perluas Sidebar' : 'Ciutkan Sidebar'}
-            style={{ marginLeft: sidebarCollapsed ? 'auto' : undefined }}
-          >
-            <LayoutPanelLeft size={18} />
-          </button>
+          <span className="name">Teleradiologi AI</span>
         </div>
 
         <nav className="sb-nav">
@@ -243,33 +231,10 @@ export default function Shell() {
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <button
-                type="button"
-                className="btn"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  fontSize: 13,
-                  justifyContent: 'flex-start',
-                  padding: '8px 10px',
-                  color: 'var(--neutral-1000)',
-                  borderRadius: 6,
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  width: '100%',
-                }}
-                onClick={() => {
-                  setShowProfileMenu(false)
-                  addToast('Profil Akun Dokter Radiologi aktif.', 'info')
-                }}
-              >
-                <User size={16} />
-                <span>Akun Dokter Radiologi</span>
-              </button>
-
-              <div style={{ borderTop: '1px solid var(--neutral-200)', margin: '2px 0' }} />
+              <div style={{ padding: '6px 8px', borderBottom: '1px solid var(--neutral-200)', marginBottom: 2 }}>
+                <p style={{ fontSize: 13, fontWeight: 700 }}>Faskes 3T</p>
+                <p style={{ fontSize: 11, color: 'var(--neutral-400)' }}>Fasilitas Pelayanan Kesehatan 3T</p>
+              </div>
 
               <button
                 type="button"
@@ -290,11 +255,12 @@ export default function Shell() {
                 }}
                 onClick={() => {
                   setShowProfileMenu(false)
-                  addToast('Anda telah keluar dari sesi akun.', 'warning')
+                  logout()
+                  navigate('/login', { replace: true })
                 }}
               >
                 <LogOut size={16} color="var(--red-100)" />
-                <span style={{ color: 'var(--red-100)', fontWeight: 500 }}>Log Out</span>
+                <span style={{ color: 'var(--red-100)', fontWeight: 500 }}>Keluar (Log Out)</span>
               </button>
             </div>
           )}
